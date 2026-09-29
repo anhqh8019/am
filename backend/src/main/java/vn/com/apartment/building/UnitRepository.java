@@ -12,6 +12,7 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
     @Query("""
         select u from Unit u join fetch u.building b
         where (:buildingId is null or b.id = :buildingId)
+          and u.unitType = vn.com.apartment.building.UnitType.APARTMENT
           and (:keyword is null or lower(u.code) like lower(concat('%', :keyword, '%')))
         order by b.code, u.code
         """)

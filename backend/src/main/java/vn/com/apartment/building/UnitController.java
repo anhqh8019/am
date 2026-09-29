@@ -37,7 +37,7 @@ public class UnitController {
         if (unitRepository.existsByBuildingIdAndCodeIgnoreCase(building.getId(), code)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã căn hộ đã tồn tại trong tòa nhà.");
         }
-        Unit unit = new Unit(building, code, request.unitType(), request.areaM2());
+        Unit unit = new Unit(building, code, UnitType.APARTMENT, request.areaM2());
         return UnitResponse.from(unitRepository.save(unit));
     }
 
@@ -50,7 +50,7 @@ public class UnitController {
         if (unitRepository.existsByBuildingIdAndCodeIgnoreCaseAndIdNot(building.getId(), code, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã căn hộ đã tồn tại trong tòa nhà.");
         }
-        unit.update(building, code, request.unitType(), request.areaM2(), request.status());
+        unit.update(building, code, UnitType.APARTMENT, request.areaM2(), request.status());
         return UnitResponse.from(unit);
     }
 
@@ -75,7 +75,6 @@ public class UnitController {
     record UnitRequest(
         @NotNull Long buildingId,
         @NotBlank @Size(max = 30) String code,
-        @NotNull UnitType unitType,
         @DecimalMin(value = "0.01") @Digits(integer = 10, fraction = 2) BigDecimal areaM2,
         @NotNull UnitStatus status
     ) {}
