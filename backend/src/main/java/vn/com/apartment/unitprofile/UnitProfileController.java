@@ -11,16 +11,19 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import vn.com.apartment.building.*;
 import vn.com.apartment.resident.*;
+import vn.com.apartment.tariff.ServiceTariff;
+import vn.com.apartment.tariff.ServiceTariffRepository;
 
 @RestController @RequestMapping("/api/unit-profiles")
 public class UnitProfileController {
-    private final UnitRepository units; private final CustomerRepository customers; private final UnitOccupancyRepository occupancies; private final UnitServiceAssignmentRepository services;
-    public UnitProfileController(UnitRepository units,CustomerRepository customers,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository services){this.units=units;this.customers=customers;this.occupancies=occupancies;this.services=services;}
+    private final UnitRepository units; private final CustomerRepository customers; private final UnitOccupancyRepository occupancies; private final UnitServiceAssignmentRepository services; private final ServiceTariffRepository tariffs;
+    public UnitProfileController(UnitRepository units,CustomerRepository customers,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository services,ServiceTariffRepository tariffs){this.units=units;this.customers=customers;this.occupancies=occupancies;this.services=services;this.tariffs=tariffs;}
 
     @GetMapping("/{unitId}") @Transactional(readOnly=true)
     public ProfileResponse profile(@PathVariable Long unitId){
         Unit u=unit(unitId);List<OccupantResponse> people=occupancies.findActiveByUnitId(unitId).stream().map(OccupantResponse::from).toList();
-        return new ProfileResponse(u.getId(),u.getCode(),u.getBuilding().getName(),u.getAreaM2(),people,services.findByUnitIdAndActiveTrueOrderByMandatoryDescServiceNameAsc(unitId).stream().map(ServiceResponse::from).toList());
+        List<TariffOptionResponse> availableTariffs=tariffs.findApplicable("SERVICE_FEE",u.getBuilding().getId()).stream().map(TariffOptionResponse::from).toList();
+        return new ProfileResponse(u.getId(),u.getCode(),u.getBuilding().getName(),u.getAreaM2(),people,services.findByUnitIdAndActiveTrueOrderByMandatoryDescServiceNameAsc(unitId).stream().map(s->serviceResponse(s,u)).toList(),availableTariffs);
     }
 
     @PostMapping("/{unitId}/owner") @Transactional
@@ -59,12 +62,43 @@ public class UnitProfileController {
     @DeleteMapping("/services/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional
     public void endService(@PathVariable Long id){UnitServiceAssignment s=services.findById(id).orElseThrow(()->notFound("Không tìm thấy dịch vụ."));try{s.end(LocalDate.now());}catch(IllegalStateException e){bad(e.getMessage());}}
 
+    @PutMapping("/{unitId}/service-fee-tariff") @Transactional
+    public ProfileResponse assignServiceFeeTariff(@PathVariable Long unitId,@Valid @RequestBody TariffAssignmentRequest r){
+        Unit u=unit(unitId);
+        UnitServiceAssignment service=services.findByUnitIdAndActiveTrueOrderByMandatoryDescServiceNameAsc(unitId).stream()
+            .filter(s->"SERVICE_FEE".equals(s.getServiceCode())).findFirst()
+            .orElseThrow(()->notFound("Căn hộ chưa được gán phí dịch vụ tòa nhà."));
+        ServiceTariff tariff=null;
+        if(r.tariffId()!=null){
+            tariff=tariffs.findById(r.tariffId()).orElseThrow(()->notFound("Không tìm thấy biểu phí."));
+            if(!"SERVICE_FEE".equals(tariff.getServiceCode()))bad("Biểu phí không thuộc phí dịch vụ tòa nhà.");
+            if(tariff.getBuilding()!=null&&!tariff.getBuilding().getId().equals(u.getBuilding().getId()))bad("Biểu phí không áp dụng cho tòa nhà của căn hộ này.");
+        }
+        service.assignTariff(tariff);
+        return profile(unitId);
+    }
+
     private Unit unit(Long id){return units.findById(id).orElseThrow(()->notFound("Không tìm thấy căn hộ."));}
+    private ServiceResponse serviceResponse(UnitServiceAssignment service,Unit unit){
+        BigDecimal price=service.getUnitPrice();
+        BigDecimal quantity=service.getQuantity();
+        if("SERVICE_FEE".equals(service.getServiceCode())){
+            quantity=unit.getAreaM2()==null?BigDecimal.ZERO:unit.getAreaM2();
+            if(service.getTariff()!=null)price=service.getTariff().getUnitPrice();
+            else{
+                List<ServiceTariff> effective=tariffs.findEffective(service.getServiceCode(),unit.getBuilding().getId(),LocalDate.now());
+                if(!effective.isEmpty())price=effective.getFirst().getUnitPrice();
+            }
+        }
+        return ServiceResponse.from(service,quantity,price);
+    }
     private String trim(String v){return v==null||v.isBlank()?null:v.trim();} private String normalizePlate(String v){String p=trim(v);return p==null?null:p.toUpperCase().replaceAll("[\\s.-]","");} private ResponseStatusException notFound(String m){return new ResponseStatusException(HttpStatus.NOT_FOUND,m);} private void bad(String m){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,m);} private void conflict(String m){throw new ResponseStatusException(HttpStatus.CONFLICT,m);}
 
     public record OwnerRequest(@NotBlank @Size(max=30) String customerCode,@NotBlank @Size(max=200) String fullName,@NotBlank @Size(max=30) String phone,@Email String email,@Min(1900) @Max(2100) int birthYear,@NotNull Gender gender,@NotBlank String nationalId,@NotNull LocalDate effectiveDate){}
     public record ServiceRequest(@NotBlank String serviceCode,@NotBlank String serviceName,String variant,@NotNull ChargeMethod chargeMethod,@NotNull @DecimalMin("0.001") BigDecimal quantity,@NotNull @DecimalMin("0") BigDecimal unitPrice,@NotNull CollectionMode collectionMode,@NotNull LocalDate startDate,String licensePlate,boolean electricVehicle){}
+    public record TariffAssignmentRequest(Long tariffId){}
     public record OccupantResponse(Long id,Long customerId,String name,String phone,Integer birthYear,Gender gender,String nationalId,OccupancyRole role,boolean primary){static OccupantResponse from(UnitOccupancy o){Customer c=o.getCustomer();return new OccupantResponse(o.getId(),c.getId(),c.getFullName(),c.getPhone(),c.getBirthYear(),c.getGender(),c.getNationalId(),o.getOccupancyRole(),o.isPrimary());}}
-    public record ServiceResponse(Long id,String serviceCode,String serviceName,String variant,ChargeMethod chargeMethod,BigDecimal quantity,BigDecimal unitPrice,CollectionMode collectionMode,String licensePlate,boolean electricVehicle,boolean mandatory,BigDecimal estimatedAmount){static ServiceResponse from(UnitServiceAssignment s){return new ServiceResponse(s.getId(),s.getServiceCode(),s.getServiceName(),s.getVariant(),s.getChargeMethod(),s.getQuantity(),s.getUnitPrice(),s.getCollectionMode(),s.getLicensePlate(),s.isElectricVehicle(),s.isMandatory(),s.getQuantity().multiply(s.getUnitPrice()));}}
-    public record ProfileResponse(Long unitId,String unitCode,String buildingName,BigDecimal areaM2,List<OccupantResponse> occupants,List<ServiceResponse> services){}
+    public record ServiceResponse(Long id,String serviceCode,String serviceName,String variant,ChargeMethod chargeMethod,BigDecimal quantity,BigDecimal unitPrice,CollectionMode collectionMode,String licensePlate,boolean electricVehicle,boolean mandatory,BigDecimal estimatedAmount,Long tariffId){static ServiceResponse from(UnitServiceAssignment s){return from(s,s.getQuantity(),s.getUnitPrice());}static ServiceResponse from(UnitServiceAssignment s,BigDecimal quantity,BigDecimal price){return new ServiceResponse(s.getId(),s.getServiceCode(),s.getServiceName(),s.getVariant(),s.getChargeMethod(),quantity,price,s.getCollectionMode(),s.getLicensePlate(),s.isElectricVehicle(),s.isMandatory(),quantity.multiply(price),s.getTariff()==null?null:s.getTariff().getId());}}
+    public record TariffOptionResponse(Long id,String scopeName,BigDecimal unitPrice,LocalDate effectiveFrom,LocalDate effectiveTo,String description){static TariffOptionResponse from(ServiceTariff t){return new TariffOptionResponse(t.getId(),t.getBuilding()==null?"Toàn chung cư":t.getBuilding().getName(),t.getUnitPrice(),t.getEffectiveFrom(),t.getEffectiveTo(),t.getDescription());}}
+    public record ProfileResponse(Long unitId,String unitCode,String buildingName,BigDecimal areaM2,List<OccupantResponse> occupants,List<ServiceResponse> services,List<TariffOptionResponse> availableTariffs){}
 }

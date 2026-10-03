@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { AlertTriangle, Building2, CarFront, DoorOpen, FileText, LayoutDashboard, LogOut, QrCode, Store, Users, WalletCards } from 'lucide-react';
+import { AlertTriangle, Building2, CarFront, DoorOpen, FileText, LayoutDashboard, LogOut, QrCode, Settings, Store, Users, WalletCards } from 'lucide-react';
 import { LoginPage } from './LoginPage';
 import { AuthUser, clearSession, login, readUser, saveSession } from './auth';
 import { UnitsPage } from './UnitsPage';
 import { CommercialPage } from './CommercialPage';
 import { ResidentsPage } from './ResidentsPage';
+import { ServiceTariffsPage } from './ServiceTariffsPage';
 
 const metrics = [
   ['Phải thu kỳ này', '286,4 triệu', 'Phí dịch vụ, xe, thuê và điện'],
@@ -20,7 +21,7 @@ const services = [
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => readUser());
-  const [page, setPage] = useState<'dashboard'|'units'|'residents'|'commercial'>('dashboard');
+  const [page, setPage] = useState<'dashboard'|'units'|'residents'|'commercial'|'tariffs'>('dashboard');
 
   if (!currentUser) {
     return <LoginPage onLogin={async (username, password, remember) => {
@@ -40,6 +41,7 @@ export function App() {
         <button><WalletCards/>Thu phí và công nợ</button>
         <button><CarFront/>Bãi xe</button>
         <button className={page==='commercial'?'active':''} onClick={()=>setPage('commercial')}><Store/>Mặt bằng cho thuê</button>
+        <button className={page==='tariffs'?'active':''} onClick={()=>setPage('tariffs')}><Settings/>Dịch vụ & biểu phí</button>
         <button><QrCode/>Thanh toán QR</button>
         <button><FileText/>Báo cáo</button>
         <button onClick={() => { clearSession(); setCurrentUser(null); }}><LogOut/>Đăng xuất</button>
@@ -47,7 +49,7 @@ export function App() {
       <div className="signed-user"><span>{currentUser.displayName}</span><small>{currentUser.roles.join(', ')}</small></div>
     </aside>
     <main>
-      {page==='units'?<UnitsPage/>:page==='residents'?<ResidentsPage/>:page==='commercial'?<CommercialPage/>:<>
+      {page==='units'?<UnitsPage/>:page==='residents'?<ResidentsPage/>:page==='commercial'?<CommercialPage/>:page==='tariffs'?<ServiceTariffsPage/>:<>
       <header><div><h1>Tổng quan vận hành</h1><p>Dữ liệu minh họa cho phiên bản khởi tạo</p></div><select aria-label="Chọn tòa"><option>Toàn khu</option><option>Tòa A</option><option>Tòa B</option></select></header>
       <section className="metrics">{metrics.map(([label,value,note],i)=><article key={label} className={i===2?'danger':''}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</section>
       <section className="grid">
