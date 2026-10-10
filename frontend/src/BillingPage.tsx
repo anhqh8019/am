@@ -183,7 +183,7 @@ export function BillingPage({ initialSourceType = "" }: { initialSourceType?: ""
         }),
       });
       setNotice(
-        `Đã tạo ${result.created}, cập nhật ${result.updated} khoản phải thu; bỏ qua ${result.skipped} đối tượng${result.locked ? `, giữ nguyên ${result.locked} khoản đã có thanh toán` : ""}.`,
+        `Đã tạo ${result.created}, cập nhật ${result.updated} khoản phải thu; bỏ qua ${result.skipped} đối tượng${result.locked ? `, giữ nguyên ${result.locked} khoản đã có thanh toán hoặc QR` : ""}.`,
       );
       setGenerateOpen(false);
       await loadPeriods();
@@ -614,7 +614,7 @@ export function BillingPage({ initialSourceType = "" }: { initialSourceType?: ""
                 </span>
                 <small>
                   Dùng sau khi thay đổi biểu phí hoặc dịch vụ. Khoản đã thu hoặc
-                  thu một phần luôn được giữ nguyên. Hợp đồng thuê đang hiệu lực
+                  thu một phần hoặc đã phát hành QR luôn được giữ nguyên. Hợp đồng thuê đang hiệu lực
                   sẽ lấy hạn thanh toán theo ngày thu ghi trong hợp đồng.
                 </small>
               </label>

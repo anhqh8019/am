@@ -23,7 +23,8 @@ public class BillingController {
     private final UnitOccupancyRepository occupancies; private final UnitServiceAssignmentRepository assignments;
     private final ServiceTypeRepository serviceTypes; private final ServiceTariffRepository tariffs;
     private final LeaseContractRepository contracts; private final ElectricityReadingRepository electricityReadings;
-    public BillingController(BillingPeriodRepository periods,ReceivableRepository receivables,PaymentRepository payments,UnitRepository units,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository assignments,ServiceTypeRepository serviceTypes,ServiceTariffRepository tariffs,LeaseContractRepository contracts,ElectricityReadingRepository electricityReadings){this.periods=periods;this.receivables=receivables;this.payments=payments;this.units=units;this.occupancies=occupancies;this.assignments=assignments;this.serviceTypes=serviceTypes;this.tariffs=tariffs;this.contracts=contracts;this.electricityReadings=electricityReadings;}
+    private final PaymentQrRequestRepository qrRequests;
+    public BillingController(BillingPeriodRepository periods,ReceivableRepository receivables,PaymentRepository payments,UnitRepository units,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository assignments,ServiceTypeRepository serviceTypes,ServiceTariffRepository tariffs,LeaseContractRepository contracts,ElectricityReadingRepository electricityReadings,PaymentQrRequestRepository qrRequests){this.periods=periods;this.receivables=receivables;this.payments=payments;this.units=units;this.occupancies=occupancies;this.assignments=assignments;this.serviceTypes=serviceTypes;this.tariffs=tariffs;this.contracts=contracts;this.electricityReadings=electricityReadings;this.qrRequests=qrRequests;}
 
     @GetMapping("/periods") @Transactional(readOnly=true)
     public List<PeriodResponse> periodList(){return periods.findAllByOrderByPeriodStartDesc().stream().map(PeriodResponse::from).toList();}
@@ -48,7 +49,7 @@ public class BillingController {
             if(existing.isPresent()){
                 if(!request.refreshExisting()){skipped++;continue;}
                 bill=existing.get();
-                if(bill.getPaidAmount().signum()>0){locked++;continue;}
+                if(bill.getPaidAmount().signum()>0||qrRequests.existsByReceivableId(bill.getId())){locked++;continue;}
                 bill.clearItems();
                 refreshing=true;
             }else{
@@ -64,7 +65,7 @@ public class BillingController {
             if(existing.isPresent()){
                 if(!request.refreshExisting()){skipped++;continue;}
                 bill=existing.get();
-                if(bill.getPaidAmount().signum()>0){locked++;continue;}
+                if(bill.getPaidAmount().signum()>0||qrRequests.existsByReceivableId(bill.getId())){locked++;continue;}
                 bill.clearItems();refreshing=true;
             }else{
                 CommercialSpace space=contract.getCommercialSpace();
@@ -111,6 +112,7 @@ public class BillingController {
     public ReceivableResponse refreshReceivable(@PathVariable Long id){
         Receivable bill=receivables.findById(id).orElseThrow(()->notFound("Không tìm thấy khoản phải thu."));
         if(bill.getPaidAmount().signum()>0)throw new ResponseStatusException(HttpStatus.CONFLICT,"Khoản phải thu đã có thanh toán nên không thể tính lại.");
+        if(qrRequests.existsByReceivableId(bill.getId()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Khoản phải thu đã phát hành QR nên không thể tính lại. Hãy giữ nguyên để bảo toàn lịch sử đối soát.");
         BillingPeriod period=bill.getBillingPeriod();
         bill.clearItems();
         if(bill.isCommercial())populateCommercialItems(bill,bill.getLeaseContract(),period.getPeriodStart(),period.getPeriodEnd(),YearMonth.from(period.getPeriodStart()).toString());
