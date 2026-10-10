@@ -43,6 +43,7 @@ export function App() {
   const [page, setPage] = useState<
     "dashboard" | "units" | "residents" | "commercial" | "tariffs" | "billing"
   >("dashboard");
+  const [billingSource, setBillingSource] = useState<"" | "COMMERCIAL">("");
 
   if (!currentUser) {
     return (
@@ -87,7 +88,10 @@ export function App() {
           </button>
           <button
             className={page === "billing" ? "active" : ""}
-            onClick={() => setPage("billing")}
+            onClick={() => {
+              setBillingSource("");
+              setPage("billing");
+            }}
           >
             <WalletCards />
             Thu phí và công nợ
@@ -101,7 +105,7 @@ export function App() {
             onClick={() => setPage("commercial")}
           >
             <Store />
-            Mặt bằng
+            Mặt bằng và điện
           </button>
           <button
             className={page === "tariffs" ? "active" : ""}
@@ -127,7 +131,7 @@ export function App() {
         <div className="signed-user">
           <span>{currentUser.displayName}</span>
           <small>{currentUser.roles.join(", ")}</small>
-          <small>Phiên bản v0.4.13</small>
+          <small>Phiên bản v0.4.14</small>
         </div>
       </aside>
       <main>
@@ -136,11 +140,16 @@ export function App() {
         ) : page === "residents" ? (
           <ResidentsPage />
         ) : page === "commercial" ? (
-          <CommercialPage />
+          <CommercialPage
+            onOpenBilling={() => {
+              setBillingSource("COMMERCIAL");
+              setPage("billing");
+            }}
+          />
         ) : page === "tariffs" ? (
           <ServiceTariffsPage />
         ) : page === "billing" ? (
-          <BillingPage />
+          <BillingPage initialSourceType={billingSource} />
         ) : (
           <>
             <header>

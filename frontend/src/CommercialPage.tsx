@@ -11,6 +11,7 @@ import {
   Trash2,
   UserPlus,
   Users,
+  WalletCards,
   X,
 } from "lucide-react";
 import { api } from "./api";
@@ -85,7 +86,7 @@ const money = (value: number) =>
 const today = new Date().toISOString().slice(0, 10),
   period = today.slice(0, 7);
 
-export function CommercialPage() {
+export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void }) {
   const [tab, setTab] = useState<
     "spaces" | "tenants" | "contracts" | "electric"
   >("spaces");
@@ -389,6 +390,10 @@ export function CommercialPage() {
           onClick={() => setTab("electric")}
         >
           Điện công tơ
+        </button>
+        <button onClick={onOpenBilling}>
+          <WalletCards />
+          Thu phí mặt bằng
         </button>
       </div>
       {error && <div className="page-error top-error">{error}</div>}

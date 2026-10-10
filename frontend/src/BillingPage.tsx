@@ -62,13 +62,13 @@ function defaultDue() {
   d.setDate(d.getDate() + 10);
   return d.toISOString().slice(0, 10);
 }
-export function BillingPage() {
+export function BillingPage({ initialSourceType = "" }: { initialSourceType?: "" | "COMMERCIAL" }) {
   const [periods, setPeriods] = useState<Period[]>([]),
     [bills, setBills] = useState<Bill[]>([]),
     [buildings, setBuildings] = useState<Building[]>([]);
   const [periodId, setPeriodId] = useState(""),
     [status, setStatus] = useState(""),
-    [sourceType, setSourceType] = useState(""),
+    [sourceType, setSourceType] = useState<string>(initialSourceType),
     [keyword, setKeyword] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
