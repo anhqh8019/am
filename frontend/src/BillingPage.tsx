@@ -277,7 +277,7 @@ export function BillingPage({ initialSourceType = "" }: { initialSourceType?: ""
   async function refreshBill(b: Bill) {
     if (
       !window.confirm(
-        `Tính lại toàn bộ dịch vụ phải thu của ${b.sourceType === "COMMERCIAL" ? "mặt bằng" : "căn"} ${b.unitCode} trong kỳ ${b.periodCode.slice(4, 6)}/${b.periodCode.slice(0, 4)}?`,
+        `Tính lại toàn bộ dịch vụ phải thu của ${b.sourceType === "COMMERCIAL" ? "mặt bằng" : "căn"} ${b.unitCode} trong kỳ ${b.periodCode.slice(4, 6)}/${b.periodCode.slice(0, 4)}? QR chưa thanh toán (nếu có) sẽ bị hủy và cần tạo lại.`,
       )
     )
       return;
