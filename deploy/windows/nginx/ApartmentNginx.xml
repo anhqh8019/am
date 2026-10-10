@@ -1,0 +1,22 @@
+<service>
+  <id>ApartmentManagementNginx</id>
+  <name>Apartment Management Web</name>
+  <description>Nginx phục vụ React và reverse proxy tới Spring Boot.</description>
+  <executable>%BASE%\nginx.exe</executable>
+  <arguments>-p "%BASE%" -c conf/nginx.conf</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <stopexecutable>%BASE%\nginx.exe</stopexecutable>
+  <stoparguments>-p "%BASE%" -c conf/nginx.conf -s quit</stoparguments>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+  <logpath>%BASE%\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>5242880</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>
