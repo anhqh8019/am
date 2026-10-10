@@ -19,13 +19,14 @@ import { ResidentsPage } from "./ResidentsPage";
 import { ServiceTariffsPage } from "./ServiceTariffsPage";
 import { BillingPage } from "./BillingPage";
 import { DashboardPage } from "./DashboardPage";
+import { ReportsPage } from "./ReportsPage";
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() =>
     readUser(),
   );
   const [page, setPage] = useState<
-    "dashboard" | "units" | "residents" | "commercial" | "tariffs" | "billing"
+    "dashboard" | "units" | "residents" | "commercial" | "tariffs" | "billing" | "reports"
   >("dashboard");
   const [billingSource, setBillingSource] = useState<"" | "COMMERCIAL">("");
 
@@ -98,7 +99,7 @@ export function App() {
             <Settings />
             Dịch vụ & biểu phí
           </button>
-          <button>
+          <button className={page === "reports" ? "active" : ""} onClick={() => setPage("reports")}>
             <FileText />
             Báo cáo
           </button>
@@ -115,7 +116,7 @@ export function App() {
         <div className="signed-user">
           <span>{currentUser.displayName}</span>
           <small>{currentUser.roles.join(", ")}</small>
-          <small>Phiên bản v0.4.20</small>
+          <small>Phiên bản v0.4.22</small>
         </div>
       </aside>
       <main>
@@ -134,6 +135,8 @@ export function App() {
           <ServiceTariffsPage />
         ) : page === "billing" ? (
           <BillingPage initialSourceType={billingSource} />
+        ) : page === "reports" ? (
+          <ReportsPage />
         ) : (
           <DashboardPage />
         )}

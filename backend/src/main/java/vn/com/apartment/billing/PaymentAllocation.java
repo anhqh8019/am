@@ -27,4 +27,7 @@ public class PaymentAllocation {
         this.receivableItem=receivableItem;
         this.amount=amount;
     }
+
+    public ReceivableItem getReceivableItem() { return receivableItem; }
+    public BigDecimal getAmount() { return amount; }
 }
