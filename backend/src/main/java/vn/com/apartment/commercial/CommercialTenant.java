@@ -20,4 +20,8 @@ public class CommercialTenant {
     public Long getId(){return id;} public String getCode(){return code;} public String getName(){return name;}
     public String getTaxCode(){return taxCode;} public String getRepresentative(){return representative;}
     public String getPhone(){return phone;} public String getEmail(){return email;} public String getBillingAddress(){return billingAddress;} public boolean isActive(){return active;}
+    public void update(String code,String name,String taxCode,String representative,String phone,String email,String billingAddress){
+        this.code=code;this.name=name;this.taxCode=taxCode;this.representative=representative;this.phone=phone;this.email=email;this.billingAddress=billingAddress;
+    }
+    public void deactivate(){this.active=false;}
 }

@@ -52,6 +52,15 @@ public class ServiceTariff {
         active = false;
     }
 
+    public void update(BigDecimal unitPrice, LocalDate effectiveFrom,
+                       LocalDate effectiveTo, String description) {
+        this.unitPrice = unitPrice;
+        this.effectiveFrom = effectiveFrom;
+        this.effectiveTo = effectiveTo;
+        this.description = description;
+        this.active = effectiveTo == null || !effectiveTo.isBefore(LocalDate.now());
+    }
+
     public Long getId() { return id; }
     public String getServiceCode() { return serviceCode; }
     public Building getBuilding() { return building; }

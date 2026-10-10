@@ -5,4 +5,6 @@ public interface UnitServiceAssignmentRepository extends JpaRepository<UnitServi
     List<UnitServiceAssignment> findByUnitIdAndActiveTrueOrderByMandatoryDescServiceNameAsc(Long unitId);
     boolean existsByUnitIdAndServiceCodeAndActiveTrue(Long unitId,String serviceCode);
     boolean existsByLicensePlateAndActiveTrue(String licensePlate);
+    boolean existsByLicensePlateAndActiveTrueAndIdNot(String licensePlate,Long id);
+    boolean existsByTariffId(Long tariffId);
 }

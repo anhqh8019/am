@@ -25,27 +25,44 @@ public class CommercialController {
 
     @GetMapping("/spaces") @Transactional(readOnly=true)
     public List<SpaceResponse> spaces(@RequestParam(required=false) Long buildingId,@RequestParam(required=false) String keyword){
-        String q=keyword==null||keyword.isBlank()?null:keyword.trim(); return spaces.search(buildingId,q).stream().map(SpaceResponse::from).toList();
+        String q=keyword==null||keyword.isBlank()?null:keyword.trim(); return spaces.search(buildingId,q).stream().map(this::spaceResponse).toList();
     }
     @PostMapping("/spaces") @ResponseStatus(HttpStatus.CREATED) @Transactional
     public SpaceResponse createSpace(@Valid @RequestBody SpaceRequest r){
         Building b=building(r.buildingId());String code=code(r.code());
         if(spaces.existsByBuildingIdAndCodeIgnoreCase(b.getId(),code)) conflict("Mã mặt bằng đã tồn tại trong tòa nhà.");
-        return SpaceResponse.from(spaces.save(new CommercialSpace(b,code,r.location().trim(),trim(r.description()),r.totalAreaM2())));
+        return spaceResponse(spaces.save(new CommercialSpace(b,code,r.location().trim(),trim(r.description()),r.totalAreaM2())));
     }
     @PutMapping("/spaces/{id}") @Transactional
     public SpaceResponse updateSpace(@PathVariable Long id,@Valid @RequestBody SpaceRequest r){
         CommercialSpace s=space(id);Building b=building(r.buildingId());String code=code(r.code());
         if(spaces.existsByBuildingIdAndCodeIgnoreCaseAndIdNot(b.getId(),code,id)) conflict("Mã mặt bằng đã tồn tại trong tòa nhà.");
-        s.update(b,code,r.location().trim(),trim(r.description()),r.totalAreaM2(),r.status()); return SpaceResponse.from(s);
+        s.update(b,code,r.location().trim(),trim(r.description()),r.totalAreaM2(),r.status()); return spaceResponse(s);
     }
-    @DeleteMapping("/spaces/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional public void deactivateSpace(@PathVariable Long id){space(id).deactivate();}
+    @DeleteMapping("/spaces/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional public void deactivateSpace(@PathVariable Long id){
+        CommercialSpace s=space(id);
+        if(contracts.existsByCommercialSpace_IdAndStatus(id,LeaseStatus.ACTIVE))conflict("Mặt bằng đang có hợp đồng hiệu lực. Hãy kết thúc hợp đồng trước khi xóa.");
+        s.deactivate();
+    }
 
     @GetMapping("/tenants") @Transactional(readOnly=true) public List<TenantResponse> tenants(){return tenants.findAllByActiveTrueOrderByNameAsc().stream().map(TenantResponse::from).toList();}
     @PostMapping("/tenants") @ResponseStatus(HttpStatus.CREATED) @Transactional
     public TenantResponse createTenant(@Valid @RequestBody TenantRequest r){
         String code=code(r.code());if(tenants.existsByCodeIgnoreCase(code)) conflict("Mã khách thuê đã tồn tại.");
         return TenantResponse.from(tenants.save(new CommercialTenant(code,r.name().trim(),trim(r.taxCode()),trim(r.representative()),trim(r.phone()),trim(r.email()),trim(r.billingAddress()))));
+    }
+    @PutMapping("/tenants/{id}") @Transactional
+    public TenantResponse updateTenant(@PathVariable Long id,@Valid @RequestBody TenantRequest r){
+        CommercialTenant t=tenant(id);String code=code(r.code());
+        if(tenants.existsByCodeIgnoreCaseAndIdNot(code,id)) conflict("Mã khách thuê đã tồn tại.");
+        t.update(code,r.name().trim(),trim(r.taxCode()),trim(r.representative()),trim(r.phone()),trim(r.email()),trim(r.billingAddress()));
+        return TenantResponse.from(t);
+    }
+    @DeleteMapping("/tenants/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional
+    public void deactivateTenant(@PathVariable Long id){
+        CommercialTenant t=tenant(id);
+        if(contracts.existsByTenant_IdAndStatus(id,LeaseStatus.ACTIVE)) conflict("Khách thuê đang có hợp đồng hiệu lực. Hãy kết thúc hợp đồng trước khi xóa.");
+        t.deactivate();
     }
 
     @GetMapping("/contracts") @Transactional(readOnly=true) public List<ContractResponse> contracts(){return contracts.findAllDetailed().stream().map(ContractResponse::from).toList();}
@@ -78,13 +95,16 @@ public class CommercialController {
     private Building building(Long id){return buildings.findById(id).filter(Building::isActive).orElseThrow(()->notFound("Không tìm thấy tòa nhà."));}
     private CommercialSpace space(Long id){return spaces.findById(id).orElseThrow(()->notFound("Không tìm thấy mặt bằng."));}
     private CommercialTenant tenant(Long id){return tenants.findById(id).filter(CommercialTenant::isActive).orElseThrow(()->notFound("Không tìm thấy khách thuê."));}
+    private SpaceResponse spaceResponse(CommercialSpace s){
+        LeaseContract active=contracts.findFirstByCommercialSpace_IdAndStatusOrderByStartDateDesc(s.getId(),LeaseStatus.ACTIVE).orElse(null);
+        return new SpaceResponse(s.getId(),s.getBuilding().getId(),s.getBuilding().getName(),s.getCode(),s.getLocation(),s.getDescription(),s.getTotalAreaM2(),s.getStatus(),active==null?null:active.getTenant().getId(),active==null?null:active.getTenant().getName(),active==null?null:active.getContractNumber());
+    }
     private String code(String v){return v.trim().toUpperCase();} private String trim(String v){return v==null||v.isBlank()?null:v.trim();}
     private ResponseStatusException notFound(String m){return new ResponseStatusException(HttpStatus.NOT_FOUND,m);} private void conflict(String m){throw new ResponseStatusException(HttpStatus.CONFLICT,m);} private void bad(String m){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,m);}
 
     public record SpaceRequest(@NotNull Long buildingId,@NotBlank @Size(max=30) String code,@NotBlank @Size(max=200) String location,@Size(max=500) String description,
         @NotNull @DecimalMin("0.01") @Digits(integer=10,fraction=2) BigDecimal totalAreaM2,@NotNull CommercialSpaceStatus status){}
-    public record SpaceResponse(Long id,Long buildingId,String buildingName,String code,String location,String description,BigDecimal totalAreaM2,CommercialSpaceStatus status){
-        static SpaceResponse from(CommercialSpace s){return new SpaceResponse(s.getId(),s.getBuilding().getId(),s.getBuilding().getName(),s.getCode(),s.getLocation(),s.getDescription(),s.getTotalAreaM2(),s.getStatus());}}
+    public record SpaceResponse(Long id,Long buildingId,String buildingName,String code,String location,String description,BigDecimal totalAreaM2,CommercialSpaceStatus status,Long tenantId,String tenantName,String contractNumber){}
     public record TenantRequest(@NotBlank @Size(max=30) String code,@NotBlank @Size(max=200) String name,@Size(max=30) String taxCode,@Size(max=150) String representative,@Size(max=30) String phone,@Email @Size(max=150) String email,@Size(max=300) String billingAddress){}
     public record TenantResponse(Long id,String code,String name,String taxCode,String representative,String phone,String email,String billingAddress){static TenantResponse from(CommercialTenant t){return new TenantResponse(t.getId(),t.getCode(),t.getName(),t.getTaxCode(),t.getRepresentative(),t.getPhone(),t.getEmail(),t.getBillingAddress());}}
     public record ContractRequest(@NotBlank @Size(max=50) String contractNumber,@NotNull Long spaceId,@NotNull Long tenantId,@NotNull @DecimalMin("0.01") BigDecimal leasedAreaM2,

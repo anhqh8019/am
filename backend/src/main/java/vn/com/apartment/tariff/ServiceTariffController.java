@@ -21,10 +21,13 @@ public class ServiceTariffController {
     private static final String SERVICE_FEE = "SERVICE_FEE";
     private final ServiceTariffRepository tariffs;
     private final BuildingRepository buildings;
+    private final vn.com.apartment.unitprofile.UnitServiceAssignmentRepository assignments;
 
-    public ServiceTariffController(ServiceTariffRepository tariffs, BuildingRepository buildings) {
+    public ServiceTariffController(ServiceTariffRepository tariffs, BuildingRepository buildings,
+            vn.com.apartment.unitprofile.UnitServiceAssignmentRepository assignments) {
         this.tariffs = tariffs;
         this.buildings = buildings;
+        this.assignments = assignments;
     }
 
     @GetMapping
@@ -61,6 +64,53 @@ public class ServiceTariffController {
             SERVICE_FEE, building, request.unitPrice(), ChargeMethod.BY_AREA,
             request.effectiveFrom(), request.effectiveTo(), trim(request.description()));
         return TariffResponse.from(tariffs.save(tariff));
+    }
+
+    @PutMapping("/{id}")
+    @Transactional
+    public TariffResponse update(@PathVariable Long id, @Valid @RequestBody TariffRequest request) {
+        ServiceTariff tariff = tariffs.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy biểu phí."));
+        Long currentBuildingId = tariff.getBuilding() == null ? null : tariff.getBuilding().getId();
+        if (!java.util.Objects.equals(currentBuildingId, request.buildingId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Không thể đổi phạm vi của biểu phí đã tạo. Hãy xóa và tạo biểu phí mới.");
+        }
+        validateDates(request);
+        ensureNoOverlap(request, id);
+        tariff.update(request.unitPrice(), request.effectiveFrom(), request.effectiveTo(), trim(request.description()));
+        return TariffResponse.from(tariff);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void delete(@PathVariable Long id) {
+        ServiceTariff tariff = tariffs.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy biểu phí."));
+        if (assignments.existsByTariffId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Biểu phí đang được gán cho căn hộ. Hãy chuyển các căn hộ sang biểu phí khác trước khi xóa.");
+        }
+        tariffs.delete(tariff);
+    }
+
+    private void validateDates(TariffRequest request) {
+        if (request.effectiveTo() != null && request.effectiveTo().isBefore(request.effectiveFrom())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Ngày kết thúc không được trước ngày bắt đầu.");
+        }
+    }
+
+    private void ensureNoOverlap(TariffRequest request, Long ignoredId) {
+        for (ServiceTariff current : tariffs.findForScope(SERVICE_FEE, request.buildingId())) {
+            if (current.getId().equals(ignoredId)) continue;
+            if (overlaps(current.getEffectiveFrom(), current.getEffectiveTo(),
+                         request.effectiveFrom(), request.effectiveTo())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Khoảng thời gian này bị trùng với một biểu phí đã có trong cùng phạm vi.");
+            }
+        }
     }
 
     private boolean overlaps(LocalDate start1, LocalDate end1, LocalDate start2, LocalDate end2) {

@@ -28,7 +28,7 @@ public class ResidentController {
     public ResidentResponse create(@Valid @RequestBody ResidentRequest r){
         String code=normalize(r.customerCode());if(customers.existsByCustomerCodeIgnoreCase(code)) conflict("Mã khách hàng đã tồn tại.");
         String nationalId=trim(r.nationalId());validateNationalId(nationalId,null);
-        Customer c=customers.save(new Customer(code,r.customerType(),r.fullName().trim(),trim(r.phone()),trim(r.email()),trim(r.taxCode()),r.birthYear(),r.gender(),nationalId));
+        Customer c=customers.save(new Customer(code,r.customerType(),r.fullName().trim(),trim(r.phone()),trim(r.email()),trim(r.taxCode()),r.birthYear(),r.gender(),nationalId,null,null,trim(r.zaloPhone()),trim(r.telegramContact())));
         return ResidentResponse.from(c,List.of());
     }
 
@@ -37,7 +37,7 @@ public class ResidentController {
         Customer c=customer(id);String code=normalize(r.customerCode());
         if(customers.existsByCustomerCodeIgnoreCaseAndIdNot(code,id)) conflict("Mã khách hàng đã tồn tại.");
         String nationalId=trim(r.nationalId());validateNationalId(nationalId,id);
-        c.update(code,r.customerType(),r.fullName().trim(),trim(r.phone()),trim(r.email()),trim(r.taxCode()),r.birthYear(),r.gender(),nationalId,r.active());
+        c.update(code,r.customerType(),r.fullName().trim(),trim(r.phone()),trim(r.email()),trim(r.taxCode()),r.birthYear(),r.gender(),nationalId,c.getZaloUserId(),c.getTelegramChatId(),trim(r.zaloPhone()),trim(r.telegramContact()),r.active());
         List<OccupancyResponse> links=occupancies.findDetailedByCustomerIds(List.of(id)).stream().map(OccupancyResponse::from).toList();
         return ResidentResponse.from(c,links);
     }
@@ -80,10 +80,10 @@ public class ResidentController {
 
     public record ResidentRequest(@NotBlank @Size(max=30) String customerCode,@NotNull CustomerType customerType,@NotBlank @Size(max=200) String fullName,
         @Size(max=30) String phone,@Email @Size(max=150) String email,@Size(max=30) String taxCode,
-        @Min(1900) @Max(2100) Integer birthYear,Gender gender,@Size(max=20) String nationalId,boolean active){}
+        @Min(1900) @Max(2100) Integer birthYear,Gender gender,@Size(max=20) String nationalId,@Size(max=30) String zaloPhone,@Size(max=100) String telegramContact,boolean active){}
     public record OccupancyRequest(@NotNull Long unitId,@NotNull OccupancyRole occupancyRole,@NotNull LocalDate startDate,LocalDate endDate,boolean primary){}
     public record OccupancyResponse(Long id,Long unitId,String unitCode,Long buildingId,String buildingName,OccupancyRole occupancyRole,LocalDate startDate,LocalDate endDate,boolean primary){
         static OccupancyResponse from(UnitOccupancy o){Unit u=o.getUnit();return new OccupancyResponse(o.getId(),u.getId(),u.getCode(),u.getBuilding().getId(),u.getBuilding().getName(),o.getOccupancyRole(),o.getStartDate(),o.getEndDate(),o.isPrimary());}}
-    public record ResidentResponse(Long id,String customerCode,CustomerType customerType,String fullName,String phone,String email,String taxCode,Integer birthYear,Gender gender,String nationalId,boolean active,List<OccupancyResponse> occupancies){
-        static ResidentResponse from(Customer c,List<OccupancyResponse> links){return new ResidentResponse(c.getId(),c.getCustomerCode(),c.getCustomerType(),c.getFullName(),c.getPhone(),c.getEmail(),c.getTaxCode(),c.getBirthYear(),c.getGender(),c.getNationalId(),c.isActive(),links);}}
+    public record ResidentResponse(Long id,String customerCode,CustomerType customerType,String fullName,String phone,String email,String taxCode,Integer birthYear,Gender gender,String nationalId,String zaloPhone,String telegramContact,String zaloUserId,String telegramChatId,boolean active,List<OccupancyResponse> occupancies){
+        static ResidentResponse from(Customer c,List<OccupancyResponse> links){return new ResidentResponse(c.getId(),c.getCustomerCode(),c.getCustomerType(),c.getFullName(),c.getPhone(),c.getEmail(),c.getTaxCode(),c.getBirthYear(),c.getGender(),c.getNationalId(),c.getZaloPhone(),c.getTelegramContact(),c.getZaloUserId(),c.getTelegramChatId(),c.isActive(),links);}}
 }

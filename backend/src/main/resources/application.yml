@@ -31,5 +31,13 @@ app:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
   initial-admin:
     username: ${INITIAL_ADMIN_USERNAME:admin}
-    password: ${INITIAL_ADMIN_PASSWORD:Admin@162534}
+    password: ${INITIAL_ADMIN_PASSWORD:ChangeMe_Admin_2026!}
     display-name: ${INITIAL_ADMIN_DISPLAY_NAME:Quản trị hệ thống}
+  payment:
+    bank-code: ${PAYMENT_BANK_CODE:970415}
+    bank-account: ${PAYMENT_BANK_ACCOUNT:0000000000}
+    account-name: ${PAYMENT_ACCOUNT_NAME:BAN QUAN LY CHUNG CU}
+    webhook-secret: ${PAYMENT_WEBHOOK_SECRET:change-this-webhook-secret}
+  messaging:
+    telegram-bot-token: ${TELEGRAM_BOT_TOKEN:7251135006:AAHrCO69C5ltxaxzgu2RaZh5r9oS2KbEXpk}
+    zalo-oa-access-token: ${ZALO_OA_ACCESS_TOKEN:}

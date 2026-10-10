@@ -32,7 +32,7 @@ public class UnitProfileController {
         if(!nationalId.matches("\\d{12}"))bad("CCCD phải gồm đúng 12 chữ số.");
         Customer owner=customers.findByNationalId(nationalId).orElseGet(()->{
             if(customers.existsByCustomerCodeIgnoreCase(r.customerCode().trim())) conflict("Mã khách hàng đã tồn tại.");
-            return customers.save(new Customer(r.customerCode().trim().toUpperCase(),CustomerType.INDIVIDUAL,r.fullName().trim(),r.phone().trim(),trim(r.email()),null,r.birthYear(),r.gender(),nationalId));
+            return customers.save(new Customer(r.customerCode().trim().toUpperCase(),CustomerType.INDIVIDUAL,r.fullName().trim(),r.phone().trim(),trim(r.email()),null,r.birthYear(),r.gender(),nationalId,null,null,null,null));
         });
         if(owner.getPhone()==null||owner.getBirthYear()==null||owner.getGender()==null) bad("Chủ hộ phải có số điện thoại, năm sinh và giới tính.");
         for(UnitOccupancy old:occupancies.findActiveOwnersByUnitId(unitId)){
@@ -57,6 +57,18 @@ public class UnitProfileController {
         if(plate!=null&&services.existsByLicensePlateAndActiveTrue(plate)) conflict("Biển số xe đang được đăng ký cho một căn hộ khác.");
         BigDecimal quantity=r.chargeMethod()==ChargeMethod.BY_AREA?(u.getAreaM2()==null?BigDecimal.ONE:u.getAreaM2()):r.quantity();
         return ServiceResponse.from(services.save(new UnitServiceAssignment(u,code,r.serviceName().trim(),trim(r.variant()),r.chargeMethod(),quantity,r.unitPrice(),r.collectionMode(),false,r.startDate(),plate,r.electricVehicle())));
+    }
+
+    @PutMapping("/services/{id}") @Transactional
+    public ServiceResponse updateService(@PathVariable Long id,@Valid @RequestBody ServiceRequest r){
+        UnitServiceAssignment service=services.findById(id).orElseThrow(()->notFound("Không tìm thấy dịch vụ."));
+        if(!service.getServiceCode().equals(r.serviceCode().trim().toUpperCase()))bad("Không thể đổi loại dịch vụ. Hãy ngừng dịch vụ cũ và thêm dịch vụ mới.");
+        String plate=normalizePlate(r.licensePlate());
+        if("PARKING_MONTHLY".equals(service.getServiceCode())&&("Xe máy".equalsIgnoreCase(service.getVariant())||"Ô tô".equalsIgnoreCase(service.getVariant()))&&plate==null)bad("Xe máy và ô tô bắt buộc phải có biển số.");
+        if(plate!=null&&services.existsByLicensePlateAndActiveTrueAndIdNot(plate,id))conflict("Biển số xe đang được đăng ký cho một căn hộ khác.");
+        try{service.update(r.quantity(),r.unitPrice(),r.collectionMode(),r.startDate(),plate,r.electricVehicle());}
+        catch(IllegalStateException e){bad(e.getMessage());}
+        return ServiceResponse.from(service);
     }
 
     @DeleteMapping("/services/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional
@@ -98,7 +110,7 @@ public class UnitProfileController {
     public record ServiceRequest(@NotBlank String serviceCode,@NotBlank String serviceName,String variant,@NotNull ChargeMethod chargeMethod,@NotNull @DecimalMin("0.001") BigDecimal quantity,@NotNull @DecimalMin("0") BigDecimal unitPrice,@NotNull CollectionMode collectionMode,@NotNull LocalDate startDate,String licensePlate,boolean electricVehicle){}
     public record TariffAssignmentRequest(Long tariffId){}
     public record OccupantResponse(Long id,Long customerId,String name,String phone,Integer birthYear,Gender gender,String nationalId,OccupancyRole role,boolean primary){static OccupantResponse from(UnitOccupancy o){Customer c=o.getCustomer();return new OccupantResponse(o.getId(),c.getId(),c.getFullName(),c.getPhone(),c.getBirthYear(),c.getGender(),c.getNationalId(),o.getOccupancyRole(),o.isPrimary());}}
-    public record ServiceResponse(Long id,String serviceCode,String serviceName,String variant,ChargeMethod chargeMethod,BigDecimal quantity,BigDecimal unitPrice,CollectionMode collectionMode,String licensePlate,boolean electricVehicle,boolean mandatory,BigDecimal estimatedAmount,Long tariffId){static ServiceResponse from(UnitServiceAssignment s){return from(s,s.getQuantity(),s.getUnitPrice());}static ServiceResponse from(UnitServiceAssignment s,BigDecimal quantity,BigDecimal price){return new ServiceResponse(s.getId(),s.getServiceCode(),s.getServiceName(),s.getVariant(),s.getChargeMethod(),quantity,price,s.getCollectionMode(),s.getLicensePlate(),s.isElectricVehicle(),s.isMandatory(),quantity.multiply(price),s.getTariff()==null?null:s.getTariff().getId());}}
+    public record ServiceResponse(Long id,String serviceCode,String serviceName,String variant,ChargeMethod chargeMethod,BigDecimal quantity,BigDecimal unitPrice,CollectionMode collectionMode,String licensePlate,boolean electricVehicle,boolean mandatory,BigDecimal estimatedAmount,Long tariffId,LocalDate startDate){static ServiceResponse from(UnitServiceAssignment s){return from(s,s.getQuantity(),s.getUnitPrice());}static ServiceResponse from(UnitServiceAssignment s,BigDecimal quantity,BigDecimal price){return new ServiceResponse(s.getId(),s.getServiceCode(),s.getServiceName(),s.getVariant(),s.getChargeMethod(),quantity,price,s.getCollectionMode(),s.getLicensePlate(),s.isElectricVehicle(),s.isMandatory(),quantity.multiply(price),s.getTariff()==null?null:s.getTariff().getId(),s.getStartDate());}}
     public record TariffOptionResponse(Long id,String scopeName,BigDecimal unitPrice,LocalDate effectiveFrom,LocalDate effectiveTo,String description){static TariffOptionResponse from(ServiceTariff t){return new TariffOptionResponse(t.getId(),t.getBuilding()==null?"Toàn chung cư":t.getBuilding().getName(),t.getUnitPrice(),t.getEffectiveFrom(),t.getEffectiveTo(),t.getDescription());}}
     public record ProfileResponse(Long unitId,String unitCode,String buildingName,BigDecimal areaM2,List<OccupantResponse> occupants,List<ServiceResponse> services,List<TariffOptionResponse> availableTariffs){}
 }

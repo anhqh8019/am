@@ -1,0 +1,8 @@
+package vn.com.apartment.billing;
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+@Entity @Table(name="payments")
+public class Payment{@Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;@ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="receivable_id") private Receivable receivable;@Column(nullable=false,precision=18,scale=2) private BigDecimal amount;@Column(name="payment_date",nullable=false) private LocalDateTime paymentDate;@Column(name="payment_method",nullable=false,length=30) private String paymentMethod;@Column(name="transaction_reference",length=100) private String transactionReference;@Column(length=300) private String note;@OneToMany(mappedBy="payment",cascade=CascadeType.ALL,orphanRemoval=true) private List<PaymentAllocation> allocations=new ArrayList<>();protected Payment(){}public Payment(Receivable r,BigDecimal amount,LocalDateTime date,String method,String ref,String note){receivable=r;this.amount=amount;paymentDate=date;paymentMethod=method;transactionReference=ref;this.note=note;}public void addAllocation(ReceivableItem item,BigDecimal value){allocations.add(new PaymentAllocation(this,item,value));}}
