@@ -23,6 +23,7 @@ public class SecurityConfig {
         return http.csrf(csrf -> csrf.disable()).cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/login", "/api/health", "/actuator/health", "/api/qr-payments/webhook/bank").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/buildings").authenticated()
                 .anyRequest().authenticated())
@@ -33,7 +34,9 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource(@Value("${app.security.allowed-origins}") List<String> origins) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(origins);
+        // Origin patterns support both the development port and the Nginx
+        // deployment address (hostname/IP may be different at each customer).
+        config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);

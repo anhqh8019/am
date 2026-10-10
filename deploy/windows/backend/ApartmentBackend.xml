@@ -1,0 +1,37 @@
+<service>
+  <id>ApartmentManagementBackend</id>
+  <name>Apartment Management Backend</name>
+  <description>Spring Boot API cho hệ thống quản lý chung cư.</description>
+  <executable>%JAVA_HOME%\bin\java.exe</executable>
+  <arguments>-Xms256m -Xmx1024m -jar "%BASE%\apartment-management-api.jar"</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+
+  <env name="SERVER_PORT" value="8080" />
+  <env name="APP_DB_URL" value="jdbc:sqlserver://localhost:1433;databaseName=APARTMENT_MANAGEMENT;encrypt=false" />
+  <env name="APP_DB_USER" value="apartment_app" />
+  <env name="APP_DB_PASSWORD" value="CHANGE_DB_PASSWORD" />
+  <env name="JWT_SECRET" value="CHANGE_TO_A_RANDOM_SECRET_AT_LEAST_32_CHARACTERS" />
+  <env name="JWT_EXPIRATION_SECONDS" value="28800" />
+  <env name="ALLOWED_ORIGINS" value="http://localhost:8088,http://127.0.0.1:8088,http://*:8088" />
+  <env name="INITIAL_ADMIN_USERNAME" value="admin" />
+  <env name="INITIAL_ADMIN_PASSWORD" value="CHANGE_ADMIN_PASSWORD" />
+  <env name="INITIAL_ADMIN_DISPLAY_NAME" value="Quản trị hệ thống" />
+  <env name="PAYMENT_BANK_CODE" value="970415" />
+  <env name="PAYMENT_BANK_ACCOUNT" value="CHANGE_BANK_ACCOUNT" />
+  <env name="PAYMENT_ACCOUNT_NAME" value="BAN QUAN LY CHUNG CU" />
+  <env name="PAYMENT_WEBHOOK_SECRET" value="CHANGE_TO_A_LONG_RANDOM_WEBHOOK_SECRET" />
+  <env name="TELEGRAM_BOT_TOKEN" value="" />
+  <env name="ZALO_OA_ACCESS_TOKEN" value="" />
+
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+  <logpath>%BASE%\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10485760</sizeThreshold>
+    <keepFiles>10</keepFiles>
+  </log>
+</service>
