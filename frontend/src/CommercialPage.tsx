@@ -585,7 +585,7 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
                       </td>
                       <td>
                         <b>{money(c.monthlyTotal)}</b>
-                        <small className="cell-note">VAT {c.vatRate}%</small>
+                        <small className="cell-note">Đơn giá đã gồm GTGT {c.vatRate}%</small>
                       </td>
                       <td>
                         {c.startDate}
@@ -874,7 +874,7 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
       {dialog === "contract" && (
         <Modal
           title="Lập hợp đồng thuê"
-          note="Tiền thuê tháng = diện tích tính tiền × đơn giá/m² + VAT."
+          note="Tiền thuê tháng = diện tích tính tiền × đơn giá/m². Đơn giá đã bao gồm thuế GTGT."
           close={() => setDialog(null)}
           saving={saving}
           onSubmit={(e) => {
@@ -970,7 +970,7 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
             />
           </label>
           <label>
-            VAT (%)
+            Thuế GTGT đã gồm trong giá (%)
             <input
               required
               type="number"

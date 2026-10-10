@@ -25,8 +25,8 @@ public class LeaseContract {
         contractNumber=number;commercialSpace=space;this.tenant=tenant;leasedAreaM2=area;unitPricePerM2=price;vatRate=vat;depositAmount=deposit;startDate=start;endDate=end;this.paymentDay=paymentDay;this.status=status;this.notes=notes;
     }
     public BigDecimal getSubtotal(){return leasedAreaM2.multiply(unitPricePerM2).setScale(2,RoundingMode.HALF_UP);}
-    public BigDecimal getVatAmount(){return getSubtotal().multiply(vatRate).divide(BigDecimal.valueOf(100),2,RoundingMode.HALF_UP);}
-    public BigDecimal getMonthlyTotal(){return getSubtotal().add(getVatAmount());}
+    public BigDecimal getVatAmount(){return vatRate.signum()==0?BigDecimal.ZERO:getSubtotal().multiply(vatRate).divide(BigDecimal.valueOf(100).add(vatRate),2,RoundingMode.HALF_UP);}
+    public BigDecimal getMonthlyTotal(){return getSubtotal();}
     public Long getId(){return id;} public String getContractNumber(){return contractNumber;} public CommercialSpace getCommercialSpace(){return commercialSpace;}
     public CommercialTenant getTenant(){return tenant;} public BigDecimal getLeasedAreaM2(){return leasedAreaM2;} public BigDecimal getUnitPricePerM2(){return unitPricePerM2;}
     public BigDecimal getVatRate(){return vatRate;} public BigDecimal getDepositAmount(){return depositAmount;} public LocalDate getStartDate(){return startDate;}

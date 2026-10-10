@@ -98,7 +98,6 @@ public class BillingController {
     private void populateCommercialItems(Receivable bill,LeaseContract contract,LocalDate start,LocalDate end,String periodCode){
         ServiceType rent=serviceTypes.findByCode("COMMERCIAL_RENT").orElseThrow(()->bad("Chưa cấu hình loại dịch vụ tiền thuê mặt bằng."));
         bill.addItem(rent,"Tiền thuê mặt bằng "+contract.getCommercialSpace().getCode()+" - HĐ "+contract.getContractNumber(),contract.getLeasedAreaM2(),contract.getUnitPricePerM2(),start,end);
-        if(contract.getVatAmount().signum()>0)bill.addItem(rent,"Thuế GTGT tiền thuê ("+contract.getVatRate().stripTrailingZeros().toPlainString()+"%)",BigDecimal.ONE,contract.getVatAmount(),start,end);
         ServiceType electric=serviceTypes.findByCode("COMMERCIAL_ELECTRIC").orElse(null);
         if(electric!=null)for(ElectricityReading reading:electricityReadings.findForBilling(contract.getCommercialSpace().getId(),periodCode)){
             if(reading.getConsumption().signum()>0&&reading.getUnitPrice().signum()>0)bill.addItem(electric,"Tiền điện công tơ "+reading.getMeter().getMeterCode()+" ("+reading.getPreviousIndex()+" → "+reading.getCurrentIndex()+")",reading.getConsumption(),reading.getUnitPrice(),start,end);
