@@ -1,7 +1,6 @@
 package vn.com.apartment.config;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.*;
@@ -32,11 +31,14 @@ public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
     @Bean AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception { return config.getAuthenticationManager(); }
     @Bean
-    CorsConfigurationSource corsConfigurationSource(@Value("${app.security.allowed-origins}") List<String> origins) {
+    CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Origin patterns support both the development port and the Nginx
-        // deployment address (hostname/IP may be different at each customer).
-        config.setAllowedOriginPatterns(origins);
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:5173",
+            "http://localhost:8088",
+            "http://127.0.0.1:8088",
+            "http://DESKTOP-3A46U2P:8088"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);

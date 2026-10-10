@@ -115,7 +115,7 @@ export function App() {
         <div className="signed-user">
           <span>{currentUser.displayName}</span>
           <small>{currentUser.roles.join(", ")}</small>
-          <small>Phiên bản v0.4.19</small>
+          <small>Phiên bản v0.4.20</small>
         </div>
       </aside>
       <main>
