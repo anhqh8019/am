@@ -116,7 +116,7 @@ export function App() {
         <div className="signed-user">
           <span>{currentUser.displayName}</span>
           <small>{currentUser.roles.join(", ")}</small>
-          <small>Phiên bản v0.4.22</small>
+          <small>Phiên bản v0.4.23</small>
         </div>
       </aside>
       <main>
@@ -125,12 +125,7 @@ export function App() {
         ) : page === "residents" ? (
           <ResidentsPage />
         ) : page === "commercial" ? (
-          <CommercialPage
-            onOpenBilling={() => {
-              setBillingSource("COMMERCIAL");
-              setPage("billing");
-            }}
-          />
+          <CommercialPage />
         ) : page === "tariffs" ? (
           <ServiceTariffsPage />
         ) : page === "billing" ? (

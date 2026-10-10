@@ -23,8 +23,9 @@ public class BillingController {
     private final UnitOccupancyRepository occupancies; private final UnitServiceAssignmentRepository assignments;
     private final ServiceTypeRepository serviceTypes; private final ServiceTariffRepository tariffs;
     private final LeaseContractRepository contracts; private final ElectricityReadingRepository electricityReadings;
+    private final CommercialServiceAssignmentRepository commercialServices; private final CommercialParkingVehicleRepository commercialVehicles;
     private final PaymentQrRequestRepository qrRequests; private final BankTransactionRepository bankTransactions;
-    public BillingController(BillingPeriodRepository periods,ReceivableRepository receivables,PaymentRepository payments,UnitRepository units,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository assignments,ServiceTypeRepository serviceTypes,ServiceTariffRepository tariffs,LeaseContractRepository contracts,ElectricityReadingRepository electricityReadings,PaymentQrRequestRepository qrRequests,BankTransactionRepository bankTransactions){this.periods=periods;this.receivables=receivables;this.payments=payments;this.units=units;this.occupancies=occupancies;this.assignments=assignments;this.serviceTypes=serviceTypes;this.tariffs=tariffs;this.contracts=contracts;this.electricityReadings=electricityReadings;this.qrRequests=qrRequests;this.bankTransactions=bankTransactions;}
+    public BillingController(BillingPeriodRepository periods,ReceivableRepository receivables,PaymentRepository payments,UnitRepository units,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository assignments,ServiceTypeRepository serviceTypes,ServiceTariffRepository tariffs,LeaseContractRepository contracts,ElectricityReadingRepository electricityReadings,CommercialServiceAssignmentRepository commercialServices,CommercialParkingVehicleRepository commercialVehicles,PaymentQrRequestRepository qrRequests,BankTransactionRepository bankTransactions){this.periods=periods;this.receivables=receivables;this.payments=payments;this.units=units;this.occupancies=occupancies;this.assignments=assignments;this.serviceTypes=serviceTypes;this.tariffs=tariffs;this.contracts=contracts;this.electricityReadings=electricityReadings;this.commercialServices=commercialServices;this.commercialVehicles=commercialVehicles;this.qrRequests=qrRequests;this.bankTransactions=bankTransactions;}
 
     @GetMapping("/periods") @Transactional(readOnly=true)
     public List<PeriodResponse> periodList(){return periods.findAllByOrderByPeriodStartDesc().stream().map(PeriodResponse::from).toList();}
@@ -101,6 +102,15 @@ public class BillingController {
         ServiceType electric=serviceTypes.findByCode("COMMERCIAL_ELECTRIC").orElse(null);
         if(electric!=null)for(ElectricityReading reading:electricityReadings.findForBilling(contract.getCommercialSpace().getId(),periodCode)){
             if(reading.getConsumption().signum()>0&&reading.getUnitPrice().signum()>0)bill.addItem(electric,"Tiền điện công tơ "+reading.getMeter().getMeterCode()+" ("+reading.getPreviousIndex()+" → "+reading.getCurrentIndex()+")",reading.getConsumption(),reading.getUnitPrice(),start,end);
+        }
+        for(CommercialServiceAssignment service:commercialServices.findActiveForSpace(contract.getCommercialSpace().getId())){
+            ServiceType type=serviceTypes.findByCode("BUILDING_SERVICE".equals(service.getServiceCode())?"SERVICE_FEE":"PARKING_MONTHLY").orElse(null);
+            if(type==null)continue;
+            BigDecimal quantity;
+            if("PER_M2".equals(service.getPricingMethod()))quantity=contract.getLeasedAreaM2();
+            else if("PER_VEHICLE".equals(service.getPricingMethod()))quantity=BigDecimal.valueOf(commercialVehicles.findActiveByAssignment(service.getId()).size());
+            else quantity=BigDecimal.ONE;
+            if(quantity.signum()>0&&service.getUnitPrice().signum()>0)bill.addItem(type,service.getServiceName()+(service.getVehicleType()==null?"":" - "+service.getVehicleType()),quantity,service.getUnitPrice(),start,end);
         }
     }
 

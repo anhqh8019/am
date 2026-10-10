@@ -11,10 +11,10 @@ import {
   Trash2,
   UserPlus,
   Users,
-  WalletCards,
   X,
 } from "lucide-react";
 import { api } from "./api";
+import { CommercialServicesPanel } from "./CommercialServicesPanel";
 
 type Building = { id: number; name: string };
 type Space = {
@@ -86,9 +86,9 @@ const money = (value: number) =>
 const today = new Date().toISOString().slice(0, 10),
   period = today.slice(0, 7);
 
-export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void }) {
+export function CommercialPage() {
   const [tab, setTab] = useState<
-    "spaces" | "tenants" | "contracts" | "electric"
+    "spaces" | "tenants" | "contracts" | "services"
   >("spaces");
   const [buildings, setBuildings] = useState<Building[]>([]),
     [spaces, setSpaces] = useState<Space[]>([]),
@@ -329,10 +329,9 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
     <>
       <header>
         <div>
-          <h1>Mặt bằng kinh doanh và điện</h1>
+          <h1>Mặt bằng kinh doanh</h1>
           <p>
-            Quản lý độc lập theo vị trí, diện tích thuê, hợp đồng và công tơ
-            riêng
+            Quản lý vị trí, diện tích thuê, hợp đồng và dịch vụ riêng của mặt bằng
           </p>
         </div>
       </header>
@@ -386,14 +385,10 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
           Hợp đồng thuê
         </button>
         <button
-          className={tab === "electric" ? "active" : ""}
-          onClick={() => setTab("electric")}
+          className={tab === "services" ? "active" : ""}
+          onClick={() => setTab("services")}
         >
-          Điện công tơ
-        </button>
-        <button onClick={onOpenBilling}>
-          <WalletCards />
-          Thu phí mặt bằng
+          Dịch vụ cho mặt bằng
         </button>
       </div>
       {error && <div className="page-error top-error">{error}</div>}
@@ -605,7 +600,8 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
         </section>
       )}
 
-      {tab === "electric" && (
+      {tab === "services" && (<>
+        <CommercialServicesPanel spaces={spaces} />
         <section className="panel unit-panel">
           <div className="toolbar">
             <span className="section-hint">
@@ -672,7 +668,7 @@ export function CommercialPage({ onOpenBilling }: { onOpenBilling: () => void })
             </table>
           </div>
         </section>
-      )}
+      </>)}
 
       {dialog === "space" && (
         <Modal
