@@ -101,7 +101,7 @@ export function App() {
             onClick={() => setPage("commercial")}
           >
             <Store />
-            Mặt bằng và điện
+            Mặt bằng
           </button>
           <button
             className={page === "tariffs" ? "active" : ""}
@@ -127,7 +127,7 @@ export function App() {
         <div className="signed-user">
           <span>{currentUser.displayName}</span>
           <small>{currentUser.roles.join(", ")}</small>
-          <small>Phiên bản v0.4.11</small>
+          <small>Phiên bản v0.4.13</small>
         </div>
       </aside>
       <main>

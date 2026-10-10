@@ -14,6 +14,7 @@ import vn.com.apartment.building.*;
 import vn.com.apartment.resident.*;
 import vn.com.apartment.tariff.*;
 import vn.com.apartment.unitprofile.*;
+import vn.com.apartment.commercial.*;
 
 @RestController @RequestMapping("/api/billing")
 public class BillingController {
@@ -21,7 +22,8 @@ public class BillingController {
     private final PaymentRepository payments; private final UnitRepository units;
     private final UnitOccupancyRepository occupancies; private final UnitServiceAssignmentRepository assignments;
     private final ServiceTypeRepository serviceTypes; private final ServiceTariffRepository tariffs;
-    public BillingController(BillingPeriodRepository periods,ReceivableRepository receivables,PaymentRepository payments,UnitRepository units,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository assignments,ServiceTypeRepository serviceTypes,ServiceTariffRepository tariffs){this.periods=periods;this.receivables=receivables;this.payments=payments;this.units=units;this.occupancies=occupancies;this.assignments=assignments;this.serviceTypes=serviceTypes;this.tariffs=tariffs;}
+    private final LeaseContractRepository contracts; private final ElectricityReadingRepository electricityReadings;
+    public BillingController(BillingPeriodRepository periods,ReceivableRepository receivables,PaymentRepository payments,UnitRepository units,UnitOccupancyRepository occupancies,UnitServiceAssignmentRepository assignments,ServiceTypeRepository serviceTypes,ServiceTariffRepository tariffs,LeaseContractRepository contracts,ElectricityReadingRepository electricityReadings){this.periods=periods;this.receivables=receivables;this.payments=payments;this.units=units;this.occupancies=occupancies;this.assignments=assignments;this.serviceTypes=serviceTypes;this.tariffs=tariffs;this.contracts=contracts;this.electricityReadings=electricityReadings;}
 
     @GetMapping("/periods") @Transactional(readOnly=true)
     public List<PeriodResponse> periodList(){return periods.findAllByOrderByPeriodStartDesc().stream().map(PeriodResponse::from).toList();}
@@ -56,6 +58,24 @@ public class BillingController {
             populateItems(bill,unit,start,end);
             if(bill.getTotalAmount().signum()>0){receivables.save(bill);if(refreshing)updated++;else created++;}else skipped++;
         }
+        for(LeaseContract contract:contracts.findBillable(start,end,request.buildingId())){
+            Optional<Receivable> existing=receivables.findByLeaseContractIdAndBillingPeriodId(contract.getId(),period.getId());
+            Receivable bill;boolean refreshing=false;
+            if(existing.isPresent()){
+                if(!request.refreshExisting()){skipped++;continue;}
+                bill=existing.get();
+                if(bill.getPaidAmount().signum()>0){locked++;continue;}
+                bill.clearItems();refreshing=true;
+            }else{
+                CommercialSpace space=contract.getCommercialSpace();
+                String ref="LEASE-"+code+"-"+space.getBuilding().getCode()+"-"+space.getCode()+"-"+contract.getId();
+                LocalDate contractDue=month.atDay(Math.min(contract.getPaymentDay(),month.lengthOfMonth()));
+                if(contractDue.isBefore(contract.getStartDate()))contractDue=contract.getStartDate();
+                bill=new Receivable(ref,contract.getTenant(),space,contract,period,LocalDate.now(),contractDue);
+            }
+            populateCommercialItems(bill,contract,start,end,month.toString());
+            if(bill.getTotalAmount().signum()>0){receivables.save(bill);if(refreshing)updated++;else created++;}else skipped++;
+        }
         return new GenerationResponse(period.getId(),period.getCode(),created,updated,skipped,locked);
     }
 
@@ -74,6 +94,16 @@ public class BillingController {
         }
     }
 
+    private void populateCommercialItems(Receivable bill,LeaseContract contract,LocalDate start,LocalDate end,String periodCode){
+        ServiceType rent=serviceTypes.findByCode("COMMERCIAL_RENT").orElseThrow(()->bad("Chưa cấu hình loại dịch vụ tiền thuê mặt bằng."));
+        bill.addItem(rent,"Tiền thuê mặt bằng "+contract.getCommercialSpace().getCode()+" - HĐ "+contract.getContractNumber(),contract.getLeasedAreaM2(),contract.getUnitPricePerM2(),start,end);
+        if(contract.getVatAmount().signum()>0)bill.addItem(rent,"Thuế GTGT tiền thuê ("+contract.getVatRate().stripTrailingZeros().toPlainString()+"%)",BigDecimal.ONE,contract.getVatAmount(),start,end);
+        ServiceType electric=serviceTypes.findByCode("COMMERCIAL_ELECTRIC").orElse(null);
+        if(electric!=null)for(ElectricityReading reading:electricityReadings.findForBilling(contract.getCommercialSpace().getId(),periodCode)){
+            if(reading.getConsumption().signum()>0&&reading.getUnitPrice().signum()>0)bill.addItem(electric,"Tiền điện công tơ "+reading.getMeter().getMeterCode()+" ("+reading.getPreviousIndex()+" → "+reading.getCurrentIndex()+")",reading.getConsumption(),reading.getUnitPrice(),start,end);
+        }
+    }
+
     @GetMapping("/receivables") @Transactional(readOnly=true)
     public List<ReceivableResponse> list(@RequestParam(required=false) Long periodId){return receivables.search(periodId).stream().map(ReceivableResponse::from).toList();}
 
@@ -81,11 +111,11 @@ public class BillingController {
     public ReceivableResponse refreshReceivable(@PathVariable Long id){
         Receivable bill=receivables.findById(id).orElseThrow(()->notFound("Không tìm thấy khoản phải thu."));
         if(bill.getPaidAmount().signum()>0)throw new ResponseStatusException(HttpStatus.CONFLICT,"Khoản phải thu đã có thanh toán nên không thể tính lại.");
-        Unit unit=bill.getUnit();
         BillingPeriod period=bill.getBillingPeriod();
         bill.clearItems();
-        populateItems(bill,unit,period.getPeriodStart(),period.getPeriodEnd());
-        if(bill.getTotalAmount().signum()<=0)throw bad("Căn hộ không còn dịch vụ do Ban quản lý thu trong kỳ này.");
+        if(bill.isCommercial())populateCommercialItems(bill,bill.getLeaseContract(),period.getPeriodStart(),period.getPeriodEnd(),YearMonth.from(period.getPeriodStart()).toString());
+        else populateItems(bill,bill.getUnit(),period.getPeriodStart(),period.getPeriodEnd());
+        if(bill.getTotalAmount().signum()<=0)throw bad("Đối tượng không còn dịch vụ do Ban quản lý thu trong kỳ này.");
         return ReceivableResponse.from(receivables.save(bill));
     }
 
@@ -126,5 +156,5 @@ public class BillingController {
     public record GenerationResponse(Long periodId,String periodCode,int created,int updated,int skipped,int locked){}
     public record PeriodResponse(Long id,String code,LocalDate periodStart,LocalDate periodEnd,LocalDate dueDate,String status){static PeriodResponse from(BillingPeriod p){return new PeriodResponse(p.getId(),p.getCode(),p.getPeriodStart(),p.getPeriodEnd(),p.getDueDate(),p.getStatus());}}
     public record ItemResponse(Long id,String description,BigDecimal quantity,BigDecimal unitPrice,BigDecimal amount,BigDecimal paidAmount,BigDecimal outstandingAmount){static ItemResponse from(ReceivableItem i){return new ItemResponse(i.getId(),i.getDescription(),i.getQuantity(),i.getUnitPrice(),i.getAmount(),i.getPaidAmount(),i.outstanding());}}
-    public record ReceivableResponse(Long id,String referenceCode,String periodCode,Long buildingId,String buildingName,Long unitId,String unitCode,Long customerId,String customerName,String phone,String zaloPhone,String telegramContact,String zaloUserId,String telegramChatId,LocalDate dueDate,BigDecimal totalAmount,BigDecimal paidAmount,BigDecimal outstandingAmount,String status,List<ItemResponse> items){static ReceivableResponse from(Receivable r){BigDecimal outstanding=r.outstanding();String status=r.getStatus();if(!"PAID".equals(status)&&r.getDueDate().isBefore(LocalDate.now()))status="OVERDUE";return new ReceivableResponse(r.getId(),r.getReferenceCode(),r.getBillingPeriod().getCode(),r.getUnit().getBuilding().getId(),r.getUnit().getBuilding().getName(),r.getUnit().getId(),r.getUnit().getCode(),r.getCustomer().getId(),r.getCustomer().getFullName(),r.getCustomer().getPhone(),r.getCustomer().getZaloPhone(),r.getCustomer().getTelegramContact(),r.getCustomer().getZaloUserId(),r.getCustomer().getTelegramChatId(),r.getDueDate(),r.getTotalAmount(),r.getPaidAmount(),outstanding,status,r.getItems().stream().map(ItemResponse::from).toList());}}
+    public record ReceivableResponse(Long id,String sourceType,String referenceCode,String periodCode,Long buildingId,String buildingName,Long unitId,String unitCode,Long customerId,String customerName,String phone,String zaloPhone,String telegramContact,String zaloUserId,String telegramChatId,LocalDate dueDate,BigDecimal totalAmount,BigDecimal paidAmount,BigDecimal outstandingAmount,String status,List<ItemResponse> items){static ReceivableResponse from(Receivable r){BigDecimal outstanding=r.outstanding();String status=r.getStatus();if(!"PAID".equals(status)&&r.getDueDate().isBefore(LocalDate.now()))status="OVERDUE";if(r.isCommercial()){CommercialSpace s=r.getCommercialSpace();CommercialTenant t=r.getCommercialTenant();return new ReceivableResponse(r.getId(),"COMMERCIAL",r.getReferenceCode(),r.getBillingPeriod().getCode(),s.getBuilding().getId(),s.getBuilding().getName(),s.getId(),s.getCode(),t.getId(),t.getName(),t.getPhone(),null,null,null,null,r.getDueDate(),r.getTotalAmount(),r.getPaidAmount(),outstanding,status,r.getItems().stream().map(ItemResponse::from).toList());}Unit u=r.getUnit();Customer c=r.getCustomer();return new ReceivableResponse(r.getId(),"RESIDENTIAL",r.getReferenceCode(),r.getBillingPeriod().getCode(),u.getBuilding().getId(),u.getBuilding().getName(),u.getId(),u.getCode(),c.getId(),c.getFullName(),c.getPhone(),c.getZaloPhone(),c.getTelegramContact(),c.getZaloUserId(),c.getTelegramChatId(),r.getDueDate(),r.getTotalAmount(),r.getPaidAmount(),outstanding,status,r.getItems().stream().map(ItemResponse::from).toList());}}
 }

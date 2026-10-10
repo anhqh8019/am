@@ -33,6 +33,7 @@ type Item = {
 };
 type Bill = {
   id: number;
+  sourceType: "RESIDENTIAL" | "COMMERCIAL";
   referenceCode: string;
   periodCode: string;
   buildingId: number;
@@ -67,6 +68,7 @@ export function BillingPage() {
     [buildings, setBuildings] = useState<Building[]>([]);
   const [periodId, setPeriodId] = useState(""),
     [status, setStatus] = useState(""),
+    [sourceType, setSourceType] = useState(""),
     [keyword, setKeyword] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -140,12 +142,13 @@ export function BillingPage() {
       bills.filter(
         (b) =>
           (!status || b.status === status) &&
+          (!sourceType || b.sourceType === sourceType) &&
           (!keyword.trim() ||
             `${b.unitCode} ${b.customerName} ${b.phone || ""} ${b.referenceCode}`
               .toLowerCase()
               .includes(keyword.trim().toLowerCase())),
       ),
-    [bills, status, keyword],
+    [bills, status, sourceType, keyword],
   );
   const summary = useMemo(
     () => ({
@@ -180,7 +183,7 @@ export function BillingPage() {
         }),
       });
       setNotice(
-        `Đã tạo ${result.created}, cập nhật ${result.updated} khoản phải thu; bỏ qua ${result.skipped} căn${result.locked ? `, giữ nguyên ${result.locked} khoản đã có thanh toán` : ""}.`,
+        `Đã tạo ${result.created}, cập nhật ${result.updated} khoản phải thu; bỏ qua ${result.skipped} đối tượng${result.locked ? `, giữ nguyên ${result.locked} khoản đã có thanh toán` : ""}.`,
       );
       setGenerateOpen(false);
       await loadPeriods();
@@ -259,7 +262,7 @@ export function BillingPage() {
         }),
       });
       setNotice(
-        `Đã ghi nhận ${paymentForm.grouped ? "một phiếu thu gộp" : `${lines.length} phiếu thu riêng`} cho căn ${paymentBill.unitCode}, tổng ${money(selectedPaymentTotal)}.`,
+        `Đã ghi nhận ${paymentForm.grouped ? "một phiếu thu gộp" : `${lines.length} phiếu thu riêng`} cho ${paymentBill.sourceType === "COMMERCIAL" ? "mặt bằng" : "căn"} ${paymentBill.unitCode}, tổng ${money(selectedPaymentTotal)}.`,
       );
       setPaymentBill(null);
       await loadBills();
@@ -274,7 +277,7 @@ export function BillingPage() {
   async function refreshBill(b: Bill) {
     if (
       !window.confirm(
-        `Tính lại toàn bộ dịch vụ phải thu của căn ${b.unitCode} trong kỳ ${b.periodCode.slice(4, 6)}/${b.periodCode.slice(0, 4)}?`,
+        `Tính lại toàn bộ dịch vụ phải thu của ${b.sourceType === "COMMERCIAL" ? "mặt bằng" : "căn"} ${b.unitCode} trong kỳ ${b.periodCode.slice(4, 6)}/${b.periodCode.slice(0, 4)}?`,
       )
     )
       return;
@@ -286,7 +289,7 @@ export function BillingPage() {
         method: "PUT",
       });
       setNotice(
-        `Đã cập nhật căn ${b.unitCode}: số tiền phải thu mới là ${money(updated.totalAmount)}.`,
+        `Đã cập nhật ${b.sourceType === "COMMERCIAL" ? "mặt bằng" : "căn"} ${b.unitCode}: số tiền phải thu mới là ${money(updated.totalAmount)}.`,
       );
       await loadBills();
     } catch (e) {
@@ -356,8 +359,7 @@ export function BillingPage() {
         <div>
           <h1>Thu phí và công nợ</h1>
           <p>
-            Sinh khoản phải thu theo tháng và theo dõi thanh toán của từng căn
-            hộ
+            Thu phí căn hộ và tiền thuê mặt bằng theo từng tháng
           </p>
         </div>
         <div className="header-actions"><button className="secondary" disabled={!bills.some(b=>b.outstandingAmount>0)} onClick={()=>{setSendTarget("bulk");setSendChannel("AUTO")}}><Send />Gửi QR hàng loạt</button><button className="primary" onClick={() => setGenerateOpen(true)}><FilePlus2 />Tạo kỳ thu</button></div>
@@ -417,12 +419,17 @@ export function BillingPage() {
             <option value="OVERDUE">Quá hạn</option>
             <option value="PAID">Đã thu</option>
           </select>
+          <select value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
+            <option value="">Tất cả đối tượng</option>
+            <option value="RESIDENTIAL">Căn hộ</option>
+            <option value="COMMERCIAL">Mặt bằng thuê</option>
+          </select>
           <label className="search">
             <Search />
             <input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Căn hộ, chủ hộ, mã thu..."
+              placeholder="Căn hộ/mặt bằng, khách hàng, mã thu..."
             />
           </label>
         </div>
@@ -430,8 +437,8 @@ export function BillingPage() {
           <table>
             <thead>
               <tr>
-                <th>Căn hộ</th>
-                <th>Chủ hộ</th>
+                <th>Đối tượng</th>
+                <th>Khách hàng</th>
                 <th>Kỳ thu</th>
                 <th>Phải thu</th>
                 <th>Đã thu</th>
@@ -459,7 +466,7 @@ export function BillingPage() {
                     <td>
                       <b>{b.unitCode}</b>
                       <small className="cell-note">
-                        {b.buildingName} · {b.referenceCode}
+                        {b.sourceType === "COMMERCIAL" ? "Mặt bằng thuê" : "Căn hộ"} · {b.buildingName} · {b.referenceCode}
                       </small>
                     </td>
                     <td>
@@ -467,7 +474,7 @@ export function BillingPage() {
                       <small className="cell-note">
                         {b.phone || "Chưa có SĐT"}
                       </small>
-                      <small className="contact-channels">{b.zaloPhone&&<em title={b.zaloUserId?"Đã liên kết Zalo OA":"Có SĐT Zalo, chưa liên kết OA"}>Zalo{b.zaloUserId?" ✓":""}</em>}{b.telegramContact&&<em title={b.telegramChatId?"Đã liên kết Telegram Bot":"Có liên hệ Telegram, chưa liên kết Bot"}>Telegram{b.telegramChatId?" ✓":""}</em>}{!b.zaloPhone&&!b.telegramContact&&<span>Chưa có kênh liên hệ</span>}</small>
+                      {b.sourceType === "RESIDENTIAL" && <small className="contact-channels">{b.zaloPhone&&<em title={b.zaloUserId?"Đã liên kết Zalo OA":"Có SĐT Zalo, chưa liên kết OA"}>Zalo{b.zaloUserId?" ✓":""}</em>}{b.telegramContact&&<em title={b.telegramChatId?"Đã liên kết Telegram Bot":"Có liên hệ Telegram, chưa liên kết Bot"}>Telegram{b.telegramChatId?" ✓":""}</em>}{!b.zaloPhone&&!b.telegramContact&&<span>Chưa có kênh liên hệ</span>}</small>}
                     </td>
                     <td>
                       {b.periodCode.slice(4, 6)}/{b.periodCode.slice(0, 4)}
@@ -502,7 +509,7 @@ export function BillingPage() {
                       {b.outstandingAmount > 0 && (
                         <button className="qr-button" onClick={() => {setQrBill(b);setBankQr(null);setSelectedQrItems(b.items.filter(i=>i.outstandingAmount>0).map(i=>i.id));}}><QrCode />QR</button>
                       )}
-                      {b.outstandingAmount > 0 && <button className="send-qr-button" onClick={()=>{setSendTarget(b);setSendChannel("AUTO")}}><Send />Gửi</button>}
+                      {b.sourceType === "RESIDENTIAL" && b.outstandingAmount > 0 && <button className="send-qr-button" onClick={()=>{setSendTarget(b);setSendChannel("AUTO")}}><Send />Gửi</button>}
                       {b.outstandingAmount > 0 && (
                         <button
                           className="collect-button"
@@ -522,7 +529,7 @@ export function BillingPage() {
       {sendTarget && <div className="modal-backdrop"><div className="modal send-qr-modal"><div className="modal-title"><div><h2>{sendTarget==="bulk"?"Gửi QR toàn bộ kỳ thu":"Gửi QR cho chủ căn hộ"}</h2><p>{sendTarget==="bulk"?"Tạo và gửi QR riêng cho từng dịch vụ còn nợ.":`Căn ${sendTarget.unitCode} · ${sendTarget.customerName}`}</p></div><button type="button" onClick={()=>setSendTarget(null)}><X /></button></div><div className="form-grid"><label className="full">Kênh gửi<select value={sendChannel} onChange={e=>setSendChannel(e.target.value)}><option value="AUTO">Tự chọn Zalo hoặc Telegram</option><option value="ZALO">Chỉ gửi Zalo</option><option value="TELEGRAM">Chỉ gửi Telegram</option></select></label><p className="full send-note">Chỉ gửi cho chủ hộ đã có ID kênh tương ứng. Mỗi dịch vụ nhận một QR và mã chuyển khoản riêng.</p></div><div className="modal-actions"><button type="button" onClick={()=>setSendTarget(null)}>Hủy</button><button className="primary" disabled={saving} onClick={sendQrNotifications}><Send />{saving?"Đang gửi…":"Xác nhận gửi"}</button></div></div></div>}
       {qrBill && (
         <div className="modal-backdrop"><div className="modal qr-payment-modal">
-          <div className="modal-title"><div><h2>Tạo QR thanh toán</h2><p>Căn {qrBill.unitCode} · chọn từng dịch vụ hoặc gộp nhiều dịch vụ</p></div><button type="button" onClick={() => setQrBill(null)}><X /></button></div>
+          <div className="modal-title"><div><h2>Tạo QR thanh toán</h2><p>{qrBill.sourceType === "COMMERCIAL" ? "Mặt bằng" : "Căn"} {qrBill.unitCode} · chọn từng dịch vụ hoặc gộp nhiều dịch vụ</p></div><button type="button" onClick={() => setQrBill(null)}><X /></button></div>
           {!bankQr ? <><div className="qr-group-toolbar"><div><b>QR gộp</b><small>Đã chọn {selectedQrItems.length} dịch vụ · {money(qrBill.items.filter(i=>selectedQrItems.includes(i.id)).reduce((sum,i)=>sum+i.outstandingAmount,0))}</small></div><button className="primary" disabled={selectedQrItems.length<2||creatingGroupedQr} onClick={createGroupedQr}><QrCode />{creatingGroupedQr?"Đang tạo…":"Tạo 1 QR gộp"}</button></div><div className="qr-service-list">
             {qrBill.items.filter(i => i.outstandingAmount > 0).map(item => <article key={item.id}><label className="qr-service-choice"><input type="checkbox" checked={selectedQrItems.includes(item.id)} onChange={e=>setSelectedQrItems(ids=>e.target.checked?[...ids,item.id]:ids.filter(id=>id!==item.id))}/><span><b>{item.description}</b><small>Còn phải thu {money(item.outstandingAmount)}</small></span></label><button className="secondary" disabled={creatingQrId===item.id||creatingGroupedQr} onClick={() => createQr(item)}><QrCode />{creatingQrId===item.id?"Đang tạo…":"QR riêng"}</button></article>)}
           </div></> : <div className="bank-qr-detail">
@@ -539,7 +546,7 @@ export function BillingPage() {
             <div className="modal-title">
               <div>
                 <h2>Tạo hoặc cập nhật kỳ thu</h2>
-                <p>Sinh phí dịch vụ và các dịch vụ do Ban quản lý thu.</p>
+                <p>Sinh phí căn hộ, tiền thuê và điện mặt bằng theo tháng.</p>
               </div>
               <button type="button" onClick={() => setGenerateOpen(false)}>
                 <X />
@@ -607,7 +614,8 @@ export function BillingPage() {
                 </span>
                 <small>
                   Dùng sau khi thay đổi biểu phí hoặc dịch vụ. Khoản đã thu hoặc
-                  thu một phần luôn được giữ nguyên.
+                  thu một phần luôn được giữ nguyên. Hợp đồng thuê đang hiệu lực
+                  sẽ lấy hạn thanh toán theo ngày thu ghi trong hợp đồng.
                 </small>
               </label>
             </div>
