@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.cors.*;
 import vn.com.apartment.auth.JwtAuthenticationFilter;
 
@@ -21,6 +22,9 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
         return http.csrf(csrf -> csrf.disable()).cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(errors -> errors
+                .authenticationEntryPoint((request,response,error) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED,"Phiên đăng nhập không hợp lệ hoặc đã hết hạn."))
+                .accessDeniedHandler((request,response,error) -> response.sendError(HttpServletResponse.SC_FORBIDDEN,"Bạn không có quyền thực hiện thao tác này.")))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/login", "/api/health", "/actuator/health", "/api/qr-payments/webhook/bank").permitAll()

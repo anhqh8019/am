@@ -14,6 +14,7 @@ export async function api<T>(path:string, init:RequestInit = {}):Promise<T> {
   });
   if (response.status === 401) {
     clearSession();
+    window.setTimeout(() => window.location.reload(), 0);
     throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
   }
   if (!response.ok) {
