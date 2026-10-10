@@ -85,10 +85,16 @@ public class CommercialController {
         String meterCode=code(r.meterCode());if(meters.existsByMeterCodeIgnoreCase(meterCode)) conflict("Mã công tơ đã tồn tại.");
         return MeterResponse.from(meters.save(new ElectricityMeter(space(r.spaceId()),meterCode,trim(r.description()),r.defaultUnitPrice())));
     }
+    @DeleteMapping("/meters/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional
+    public void deactivateMeter(@PathVariable Long id){
+        ElectricityMeter meter=meters.findById(id).orElseThrow(()->notFound("Không tìm thấy công tơ."));
+        if(!meter.isActive())return;
+        meter.deactivate();
+    }
     @GetMapping("/readings") @Transactional(readOnly=true) public List<ReadingResponse> readings(){return readings.findAllDetailed().stream().map(ReadingResponse::from).toList();}
     @PostMapping("/readings") @ResponseStatus(HttpStatus.CREATED) @Transactional
     public ReadingResponse createReading(@Valid @RequestBody ReadingRequest r){
-        ElectricityMeter m=meters.findById(r.meterId()).orElseThrow(()->notFound("Không tìm thấy công tơ."));
+        ElectricityMeter m=meters.findById(r.meterId()).filter(ElectricityMeter::isActive).orElseThrow(()->notFound("Công tơ không tồn tại hoặc đã ngừng sử dụng."));
         String period=r.periodCode().trim().toUpperCase();if(readings.existsByMeterIdAndPeriodCode(m.getId(),period)) conflict("Công tơ đã có chỉ số trong kỳ này.");
         if(r.currentIndex().compareTo(r.previousIndex())<0) bad("Chỉ số cuối phải lớn hơn hoặc bằng chỉ số đầu.");
         return ReadingResponse.from(readings.save(new ElectricityReading(m,period,r.previousIndex(),r.currentIndex(),r.unitPrice(),r.readingDate(),trim(r.imageUrl()),trim(r.note()))));

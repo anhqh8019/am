@@ -13,6 +13,7 @@ public class ElectricityMeter {
     @Column(nullable=false) private boolean active=true;
     protected ElectricityMeter() {}
     public ElectricityMeter(CommercialSpace space,String code,String description,BigDecimal price){commercialSpace=space;meterCode=code;this.description=description;defaultUnitPrice=price;}
+    public void deactivate(){active=false;}
     public Long getId(){return id;} public CommercialSpace getCommercialSpace(){return commercialSpace;} public String getMeterCode(){return meterCode;}
     public String getDescription(){return description;} public BigDecimal getDefaultUnitPrice(){return defaultUnitPrice;} public boolean isActive(){return active;}
 }

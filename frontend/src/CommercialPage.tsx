@@ -324,6 +324,16 @@ export function CommercialPage() {
       setError(e instanceof Error ? e.message : "Không xóa được khách thuê.");
     }
   }
+  async function removeMeter(meter: Meter) {
+    if (!window.confirm(`Ngừng sử dụng công tơ ${meter.meterCode} của mặt bằng ${meter.spaceCode}?\n\nCác chỉ số và khoản thu cũ vẫn được giữ lại.`)) return;
+    setError("");
+    try {
+      await api(`/commercial/meters/${meter.id}`, { method: "DELETE" });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không ngừng được công tơ.");
+    }
+  }
 
   return (
     <>
@@ -618,12 +628,33 @@ export function CommercialPage() {
             </button>
             <button
               className="primary"
-              disabled={!meters.length}
+              disabled={!meters.some((m) => m.active)}
               onClick={openReading}
             >
               <Plus />
               Ghi chỉ số
             </button>
+          </div>
+          <div className="service-assignment-list meter-assignment-list">
+            {meters.filter((m) => m.active).map((m) => (
+              <article key={m.id}>
+                <div>
+                  <b>{m.meterCode}</b>
+                  <small>
+                    Mặt bằng {m.spaceCode} · Đơn giá mặc định {money(m.defaultUnitPrice)}/kWh
+                    {m.description ? ` · ${m.description}` : ""}
+                  </small>
+                </div>
+                <div className="service-actions">
+                  <button type="button" onClick={() => removeMeter(m)} title="Ngừng sử dụng công tơ">
+                    <Trash2 />Xóa
+                  </button>
+                </div>
+              </article>
+            ))}
+            {!meters.some((m) => m.active) && (
+              <div className="empty">Chưa có công tơ điện đang sử dụng.</div>
+            )}
           </div>
           <div className="table-wrap">
             <table>
