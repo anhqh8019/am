@@ -105,7 +105,7 @@ export function App() {
             onClick={() => setPage("commercial")}
           >
             <Store />
-            Mặt bằng và điện
+            Mặt bằng
           </button>
           <button
             className={page === "tariffs" ? "active" : ""}
