@@ -112,9 +112,13 @@ public class CommercialController {
     @PostMapping("/vehicles") @ResponseStatus(HttpStatus.CREATED) @Transactional
     public VehicleResponse createVehicle(@Valid @RequestBody VehicleRequest r){
         CommercialServiceAssignment a=serviceAssignments.findById(r.assignmentId()).filter(CommercialServiceAssignment::isActive).orElseThrow(()->notFound("Không tìm thấy dịch vụ bãi xe."));
-        if(!"PARKING".equals(a.getServiceCode())||!"PER_VEHICLE".equals(a.getPricingMethod()))bad("Chỉ dịch vụ bãi xe theo đầu xe mới được thêm xe.");
+        if(!"PARKING".equals(a.getServiceCode()))bad("Chỉ dịch vụ bãi xe mới được thêm xe.");
         String plate=code(r.plateNumber());if(parkingVehicles.existsByPlateNumberIgnoreCaseAndActiveTrue(plate))conflict("Biển số xe đang được sử dụng.");
-        return VehicleResponse.from(parkingVehicles.save(new CommercialParkingVehicle(a,plate,a.getVehicleType(),r.electricVehicle())));
+        String requestedType=trim(r.vehicleType());
+        if("FIXED".equals(a.getPricingMethod())&&requestedType==null)bad("Gói khoán phải chọn loại xe.");
+        String vehicleType="PER_VEHICLE".equals(a.getPricingMethod())?a.getVehicleType():requestedType.toUpperCase();
+        if(!List.of("MOTORBIKE","CAR").contains(vehicleType))bad("Loại xe không hợp lệ.");
+        return VehicleResponse.from(parkingVehicles.save(new CommercialParkingVehicle(a,plate,vehicleType,r.electricVehicle())));
     }
     @DeleteMapping("/vehicles/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional
     public void removeVehicle(@PathVariable Long id){parkingVehicles.findById(id).orElseThrow(()->notFound("Không tìm thấy xe.")).deactivate();}
@@ -145,6 +149,6 @@ public class CommercialController {
     public record ReadingResponse(Long id,Long meterId,String meterCode,String spaceCode,String periodCode,BigDecimal previousIndex,BigDecimal currentIndex,BigDecimal consumption,BigDecimal unitPrice,BigDecimal amount,LocalDate readingDate){static ReadingResponse from(ElectricityReading r){return new ReadingResponse(r.getId(),r.getMeter().getId(),r.getMeter().getMeterCode(),r.getMeter().getCommercialSpace().getCode(),r.getPeriodCode(),r.getPreviousIndex(),r.getCurrentIndex(),r.getConsumption(),r.getUnitPrice(),r.getAmount(),r.getReadingDate());}}
     public record ServiceRequest(@NotNull Long spaceId,@NotBlank String serviceCode,@NotBlank @Size(max=150) String serviceName,@NotBlank String pricingMethod,@Size(max=20) String vehicleType,@NotNull @DecimalMin("0") BigDecimal unitPrice){}
     public record ServiceResponse(Long id,Long spaceId,String spaceCode,String serviceCode,String serviceName,String pricingMethod,String vehicleType,BigDecimal unitPrice,boolean active){static ServiceResponse from(CommercialServiceAssignment a){return new ServiceResponse(a.getId(),a.getSpace().getId(),a.getSpace().getCode(),a.getServiceCode(),a.getServiceName(),a.getPricingMethod(),a.getVehicleType(),a.getUnitPrice(),a.isActive());}}
-    public record VehicleRequest(@NotNull Long assignmentId,@NotBlank @Size(max=30) String plateNumber,boolean electricVehicle){}
+    public record VehicleRequest(@NotNull Long assignmentId,@NotBlank @Size(max=30) String plateNumber,@Size(max=20) String vehicleType,boolean electricVehicle){}
     public record VehicleResponse(Long id,Long assignmentId,String spaceCode,String plateNumber,String vehicleType,boolean electricVehicle){static VehicleResponse from(CommercialParkingVehicle v){return new VehicleResponse(v.getId(),v.getAssignment().getId(),v.getAssignment().getSpace().getCode(),v.getPlateNumber(),v.getVehicleType(),v.isElectricVehicle());}}
 }
