@@ -27,7 +27,8 @@ public class SecurityConfig {
                 .accessDeniedHandler((request,response,error) -> response.sendError(HttpServletResponse.SC_FORBIDDEN,"Bạn không có quyền thực hiện thao tác này.")))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/login", "/api/health", "/actuator/health", "/api/qr-payments/webhook/bank").permitAll()
+                .requestMatchers("/api/auth/login", "/api/health", "/actuator/health", "/api/qr-payments/webhook/bank",
+                    "/api/vietqr/token_generate", "/api/vietqr/transaction-sync").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/buildings").authenticated()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
