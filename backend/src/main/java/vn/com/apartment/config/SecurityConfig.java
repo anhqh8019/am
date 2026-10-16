@@ -1,6 +1,8 @@
 package vn.com.apartment.config;
 
 import java.util.List;
+import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.*;
@@ -18,6 +20,13 @@ import vn.com.apartment.auth.JwtAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
+    private final List<String> allowedOrigins;
+
+    public SecurityConfig(@Value("${app.security.allowed-origins}") String allowedOrigins) {
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+            .map(String::trim).filter(value -> !value.isBlank()).toList();
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
         return http.csrf(csrf -> csrf.disable()).cors(Customizer.withDefaults())
@@ -38,12 +47,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-            "http://localhost:5173",
-            "http://localhost:8088",
-            "http://127.0.0.1:8088",
-            "http://DESKTOP-3A46U2P:8088"
-        ));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
