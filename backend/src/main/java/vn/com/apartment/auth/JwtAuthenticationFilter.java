@@ -15,6 +15,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwt;
     private final UserDetailsService users;
     public JwtAuthenticationFilter(JwtService jwt, UserDetailsService users) { this.jwt = jwt; this.users = users; }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.equals("/api/vietqr/token_generate")
+            || path.equals("/api/vietqr/transaction-sync")
+            || path.equals("/vietqr/api/token_generate")
+            || path.equals("/vietqr/bank/api/transaction-sync");
+    }
+
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
         throws ServletException, IOException {
         String header = request.getHeader("Authorization");
