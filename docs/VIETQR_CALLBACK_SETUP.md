@@ -4,8 +4,8 @@
 
 Thay `https://billing.example.vn` bằng tên miền thực tế:
 
-- Get Token: `https://billing.example.vn/api/vietqr/token_generate`
-- Transaction Sync: `https://billing.example.vn/api/vietqr/transaction-sync`
+- Get Token: `https://billing.example.vn/vietqr/api/token_generate`
+- Transaction Sync: `https://billing.example.vn/vietqr/bank/api/transaction-sync`
 
 Hai URL phải truy cập được từ Internet bằng HTTPS với chứng thư hợp lệ.
 
@@ -34,6 +34,18 @@ location /api/ {
 }
 ```
 
+Các URL chuẩn VietQR dùng tiền tố `/vietqr/`, vì vậy cần thêm:
+
+```nginx
+location /vietqr/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
 ## Kiểm tra bằng PowerShell
 
 ```powershell
@@ -44,7 +56,7 @@ $basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${username}:$
 
 $tokenResult = Invoke-RestMethod `
   -Method Post `
-  -Uri "$baseUrl/api/vietqr/token_generate" `
+  -Uri "$baseUrl/vietqr/api/token_generate" `
   -Headers @{ Authorization = "Basic $basic" } `
   -ContentType "application/json"
 
@@ -71,7 +83,7 @@ $body = @{
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri "$baseUrl/api/vietqr/transaction-sync" `
+  -Uri "$baseUrl/vietqr/bank/api/transaction-sync" `
   -Headers @{ Authorization = "Bearer $($tokenResult.access_token)" } `
   -ContentType "application/json" `
   -Body $body

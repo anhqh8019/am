@@ -12,7 +12,6 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/vietqr")
 public class VietQrCallbackController {
     private final VietQrCallbackTokenService tokens;
     private final BankPaymentReconciliationService reconciliation;
@@ -29,7 +28,7 @@ public class VietQrCallbackController {
         this.callbackPassword = callbackPassword;
     }
 
-    @PostMapping("/api/token_generate")
+    @PostMapping({"/api/vietqr/token_generate", "/vietqr/api/token_generate"})
     public ResponseEntity<?> generateToken(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         Credentials credentials = decodeBasic(authorization);
@@ -43,7 +42,7 @@ public class VietQrCallbackController {
             "Bearer", tokens.expirationSeconds()));
     }
 
-    @PostMapping("/bank/api/transaction-sync")
+    @PostMapping({"/api/vietqr/transaction-sync", "/vietqr/bank/api/transaction-sync"})
     public ResponseEntity<SyncResponse> transactionSync(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @Valid @RequestBody TransactionSyncRequest request) {
