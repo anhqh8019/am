@@ -17,7 +17,7 @@
   <env name="INITIAL_ADMIN_PASSWORD" value="CHANGE_ADMIN_PASSWORD" />
   <env name="INITIAL_ADMIN_DISPLAY_NAME" value="Quản trị hệ thống" />
   <env name="PAYMENT_BANK_CODE" value="970415" />
-  <env name="PAYMENT_BANK_ACCOUNT" value="CHANGE_BANK_ACCOUNT" />
+  <env name="PAYMENT_BANK_ACCOUNT" value="25678200701" />
   <env name="PAYMENT_ACCOUNT_NAME" value="BAN QUAN LY CHUNG CU" />
   <env name="PAYMENT_WEBHOOK_SECRET" value="CHANGE_TO_A_LONG_RANDOM_WEBHOOK_SECRET" />
   <env name="TELEGRAM_BOT_TOKEN" value="" />
