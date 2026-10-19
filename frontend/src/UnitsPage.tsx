@@ -9,9 +9,14 @@ type FormState = { buildingId:string; code:string; areaM2:string; status:'ACTIVE
 const emptyForm:FormState = { buildingId:'', code:'', areaM2:'', status:'ACTIVE' };
 const natural=new Intl.Collator('vi',{numeric:true,sensitivity:'base'});
 const floors=['6','7','8','9','10','11','12','12A','14','15','16','17','18','19'];
-function floorRank(code:string){const value=code.trim().toUpperCase();if(value.startsWith('12A'))return 12.5;const match=value.match(/^(\d+?)(?:\d{2}|12A)$/);return match?Number(match[1]):Number.parseFloat(value)||0}
-function unitFloor(code:string){const value=code.trim().toUpperCase();if(value.startsWith('12A'))return '12A';const match=value.match(/^(\d+?)(?:\d{2}|12A)$/);return match?.[1]??''}
-function compareUnits(a:Unit,b:Unit){return natural.compare(a.buildingCode,b.buildingCode)||floorRank(a.code)-floorRank(b.code)||natural.compare(a.code,b.code)}
+function unitFloor(unit:Unit){
+  const code=unit.code.trim().toUpperCase(), building=unit.buildingCode.trim().toUpperCase();
+  const core=building&&code.endsWith(building)?code.slice(0,-building.length):code;
+  if(core.startsWith('12A'))return '12A';
+  return /^\d{3,4}$/.test(core)?core.slice(0,-2):'';
+}
+function floorRank(unit:Unit){const floor=unitFloor(unit);return floor==='12A'?12.5:Number(floor)||0}
+function compareUnits(a:Unit,b:Unit){return natural.compare(a.buildingCode,b.buildingCode)||floorRank(a)-floorRank(b)||natural.compare(a.code,b.code)}
 
 export function UnitsPage() {
   const [buildings,setBuildings]=useState<Building[]>([]), [units,setUnits]=useState<Unit[]>([]);
@@ -32,7 +37,7 @@ export function UnitsPage() {
   useEffect(()=>{ api<Building[]>('/buildings').then(data=>{setBuildings(data);const towerA=data.find(b=>b.code.trim().toUpperCase()==='A')??data[0];if(towerA){setBuildingId(String(towerA.id));setForm(f=>({...f,buildingId:String(towerA.id)}));}}).catch(e=>setError(e.message)); },[]);
   useEffect(()=>{ const timer=setTimeout(loadUnits,250); return()=>clearTimeout(timer); },[buildingId,keyword]);
 
-  const visibleUnits=useMemo(()=>units.filter(unit=>!floor||unitFloor(unit.code)===floor),[units,floor]);
+  const visibleUnits=useMemo(()=>units.filter(unit=>!floor||unitFloor(unit)===floor),[units,floor]);
   const counts=useMemo(()=>({total:visibleUnits.length,active:visibleUnits.filter(x=>x.status==='ACTIVE').length,inactive:visibleUnits.filter(x=>x.status==='INACTIVE').length}),[visibleUnits]);
   function openCreate(){setEditing({} as Unit);setForm({...emptyForm,buildingId:String(buildings[0]?.id??'')});setError('');}
   function openEdit(unit:Unit){setEditing(unit);setForm({buildingId:String(unit.buildingId),code:unit.code,areaM2:unit.areaM2?.toString()??'',status:unit.status});setError('');}
