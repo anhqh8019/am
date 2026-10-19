@@ -35,7 +35,7 @@ app:
     display-name: ${INITIAL_ADMIN_DISPLAY_NAME:Quản trị hệ thống}
   payment:
     bank-code: ${PAYMENT_BANK_CODE:970415}
-    bank-account: ${PAYMENT_BANK_ACCOUNT:0000000000}
+    bank-account: ${PAYMENT_BANK_ACCOUNT:25678200701}
     account-name: ${PAYMENT_ACCOUNT_NAME:BAN QUAN LY CHUNG CU}
     webhook-secret: ${PAYMENT_WEBHOOK_SECRET:change-this-webhook-secret}
   vietqr:
