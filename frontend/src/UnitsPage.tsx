@@ -8,12 +8,14 @@ type Unit = { id:number; buildingId:number; buildingCode:string; buildingName:st
 type FormState = { buildingId:string; code:string; areaM2:string; status:'ACTIVE'|'INACTIVE' };
 const emptyForm:FormState = { buildingId:'', code:'', areaM2:'', status:'ACTIVE' };
 const natural=new Intl.Collator('vi',{numeric:true,sensitivity:'base'});
+const floors=['6','7','8','9','10','11','12','12A','14','15','16','17','18','19'];
 function floorRank(code:string){const value=code.trim().toUpperCase();if(value.startsWith('12A'))return 12.5;const match=value.match(/^(\d+?)(?:\d{2}|12A)$/);return match?Number(match[1]):Number.parseFloat(value)||0}
+function unitFloor(code:string){const value=code.trim().toUpperCase();if(value.startsWith('12A'))return '12A';const match=value.match(/^(\d+?)(?:\d{2}|12A)$/);return match?.[1]??''}
 function compareUnits(a:Unit,b:Unit){return natural.compare(a.buildingCode,b.buildingCode)||floorRank(a.code)-floorRank(b.code)||natural.compare(a.code,b.code)}
 
 export function UnitsPage() {
   const [buildings,setBuildings]=useState<Building[]>([]), [units,setUnits]=useState<Unit[]>([]);
-  const [buildingId,setBuildingId]=useState(''), [keyword,setKeyword]=useState('');
+  const [buildingId,setBuildingId]=useState(''), [floor,setFloor]=useState('6'), [keyword,setKeyword]=useState('');
   const [loading,setLoading]=useState(true), [error,setError]=useState('');
   const [editing,setEditing]=useState<Unit|null>(null), [form,setForm]=useState<FormState>(emptyForm), [saving,setSaving]=useState(false);
   const [profileUnit,setProfileUnit]=useState<Unit|null>(null);
@@ -27,10 +29,11 @@ export function UnitsPage() {
     } catch(e) { setError(e instanceof Error?e.message:'Không tải được dữ liệu.'); }
     finally { setLoading(false); }
   }
-  useEffect(()=>{ api<Building[]>('/buildings').then(data=>{setBuildings(data);if(data.length)setForm(f=>({...f,buildingId:String(data[0].id)}));}).catch(e=>setError(e.message)); },[]);
+  useEffect(()=>{ api<Building[]>('/buildings').then(data=>{setBuildings(data);const towerA=data.find(b=>b.code.trim().toUpperCase()==='A')??data[0];if(towerA){setBuildingId(String(towerA.id));setForm(f=>({...f,buildingId:String(towerA.id)}));}}).catch(e=>setError(e.message)); },[]);
   useEffect(()=>{ const timer=setTimeout(loadUnits,250); return()=>clearTimeout(timer); },[buildingId,keyword]);
 
-  const counts=useMemo(()=>({total:units.length,active:units.filter(x=>x.status==='ACTIVE').length,inactive:units.filter(x=>x.status==='INACTIVE').length}),[units]);
+  const visibleUnits=useMemo(()=>units.filter(unit=>!floor||unitFloor(unit.code)===floor),[units,floor]);
+  const counts=useMemo(()=>({total:visibleUnits.length,active:visibleUnits.filter(x=>x.status==='ACTIVE').length,inactive:visibleUnits.filter(x=>x.status==='INACTIVE').length}),[visibleUnits]);
   function openCreate(){setEditing({} as Unit);setForm({...emptyForm,buildingId:String(buildings[0]?.id??'')});setError('');}
   function openEdit(unit:Unit){setEditing(unit);setForm({buildingId:String(unit.buildingId),code:unit.code,areaM2:unit.areaM2?.toString()??'',status:unit.status});setError('');}
   async function submit(e:FormEvent){e.preventDefault();setSaving(true);setError('');try{
@@ -45,10 +48,10 @@ export function UnitsPage() {
     <header><div><h1>Quản lý căn hộ</h1><p>Danh mục căn hộ thuộc hai tòa nhà</p></div><button className="primary" onClick={openCreate}><Plus/>Thêm căn hộ</button></header>
     <section className="unit-summary"><article><Building2/><span><b>{counts.total}</b><small>Tổng căn đang hiển thị</small></span></article><article><span><b>{counts.active}</b><small>Đang hoạt động</small></span></article><article><span><b>{counts.inactive}</b><small>Ngừng hoạt động</small></span></article></section>
     <section className="panel unit-panel">
-      <div className="toolbar"><select value={buildingId} onChange={e=>setBuildingId(e.target.value)}><option value="">Tất cả tòa</option>{buildings.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select><label className="search"><Search/><input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Tìm mã căn hộ..."/></label></div>
+      <div className="toolbar"><select aria-label="Chọn tòa" value={buildingId} onChange={e=>setBuildingId(e.target.value)}><option value="">Tất cả tòa</option>{buildings.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select><select aria-label="Chọn tầng" value={floor} onChange={e=>setFloor(e.target.value)}><option value="">Tất cả tầng</option>{floors.map(value=><option key={value} value={value}>Tầng {value}</option>)}</select><label className="search"><Search/><input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Tìm mã căn hộ..."/></label></div>
       {error&&<div className="page-error">{error}</div>}
       <div className="table-wrap"><table><thead><tr><th>Mã căn</th><th>Tòa nhà</th><th>Diện tích</th><th>Trạng thái</th><th></th></tr></thead><tbody>
-        {loading?<tr><td colSpan={5} className="empty">Đang tải dữ liệu…</td></tr>:units.length===0?<tr><td colSpan={5} className="empty">Chưa có căn hộ. Hãy tạo dữ liệu đầu tiên.</td></tr>:units.map(unit=><tr key={unit.id}><td><b>{unit.code}</b></td><td>{unit.buildingName}</td><td>{unit.areaM2?`${unit.areaM2} m²`:'—'}</td><td><span className={`status ${unit.status.toLowerCase()}`}>{unit.status==='ACTIVE'?'Hoạt động':'Ngừng'}</span></td><td className="actions"><button title="Chủ hộ và dịch vụ" onClick={()=>setProfileUnit(unit)}><UserRoundCog/></button><button title="Sửa" onClick={()=>openEdit(unit)}><Pencil/></button>{unit.status==='ACTIVE'&&<button className="deactivate" title="Ngừng hoạt động" onClick={()=>deactivate(unit)}><X/></button>}</td></tr>)}
+        {loading?<tr><td colSpan={5} className="empty">Đang tải dữ liệu…</td></tr>:visibleUnits.length===0?<tr><td colSpan={5} className="empty">Không có căn hộ phù hợp với bộ lọc.</td></tr>:visibleUnits.map(unit=><tr key={unit.id}><td><b>{unit.code}</b></td><td>{unit.buildingName}</td><td>{unit.areaM2?`${unit.areaM2} m²`:'—'}</td><td><span className={`status ${unit.status.toLowerCase()}`}>{unit.status==='ACTIVE'?'Hoạt động':'Ngừng'}</span></td><td className="actions"><button title="Chủ hộ và dịch vụ" onClick={()=>setProfileUnit(unit)}><UserRoundCog/></button><button title="Sửa" onClick={()=>openEdit(unit)}><Pencil/></button>{unit.status==='ACTIVE'&&<button className="deactivate" title="Ngừng hoạt động" onClick={()=>deactivate(unit)}><X/></button>}</td></tr>)}
       </tbody></table></div>
     </section>
     {editing&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modal" onSubmit={submit}><div className="modal-title"><div><h2>{editing.id?'Cập nhật căn hộ':'Thêm căn hộ'}</h2><p>Thông tin dùng để liên kết cư dân và các khoản phí.</p></div><button type="button" onClick={()=>setEditing(null)}><X/></button></div>
