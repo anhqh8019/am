@@ -28,17 +28,21 @@ app:
   security:
     jwt-secret: ${JWT_SECRET:dev-only-secret-change-before-production-2026}
     jwt-expiration-seconds: ${JWT_EXPIRATION_SECONDS:28800}
-    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8088,http://127.0.0.1:8088}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8088,http://127.0.0.1:8088,http://192.168.1.222:8088}
   initial-admin:
     username: ${INITIAL_ADMIN_USERNAME:admin}
     password: ${INITIAL_ADMIN_PASSWORD:ChangeMe_Admin_2026!}
     display-name: ${INITIAL_ADMIN_DISPLAY_NAME:Quản trị hệ thống}
   payment:
-    bank-code: ${PAYMENT_BANK_CODE:970415}
+    bank-code: ${PAYMENT_BANK_CODE:970422}
     bank-account: ${PAYMENT_BANK_ACCOUNT:25678200701}
     account-name: ${PAYMENT_ACCOUNT_NAME:BAN QUAN LY CHUNG CU}
     webhook-secret: ${PAYMENT_WEBHOOK_SECRET:change-this-webhook-secret}
   vietqr:
+    client:
+      base-url: ${VIETQR_API_BASE_URL:https://dev.vietqr.org}
+      username: ${VIETQR_API_USERNAME:}
+      password: ${VIETQR_API_PASSWORD:}
     callback:
       username: ${VIETQR_CALLBACK_USERNAME:vietqr-callback}
       password: ${VIETQR_CALLBACK_PASSWORD:change-this-vietqr-callback-password}
