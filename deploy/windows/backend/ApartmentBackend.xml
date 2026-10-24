@@ -16,10 +16,13 @@
   <env name="INITIAL_ADMIN_USERNAME" value="admin" />
   <env name="INITIAL_ADMIN_PASSWORD" value="CHANGE_ADMIN_PASSWORD" />
   <env name="INITIAL_ADMIN_DISPLAY_NAME" value="Quản trị hệ thống" />
-  <env name="PAYMENT_BANK_CODE" value="970415" />
+  <env name="PAYMENT_BANK_CODE" value="970422" />
   <env name="PAYMENT_BANK_ACCOUNT" value="25678200701" />
   <env name="PAYMENT_ACCOUNT_NAME" value="BAN QUAN LY CHUNG CU" />
   <env name="PAYMENT_WEBHOOK_SECRET" value="CHANGE_TO_A_LONG_RANDOM_WEBHOOK_SECRET" />
+  <env name="VIETQR_API_BASE_URL" value="https://dev.vietqr.org" />
+  <env name="VIETQR_API_USERNAME" value="CHANGE_TO_USERNAME_PROVIDED_BY_VIETQR" />
+  <env name="VIETQR_API_PASSWORD" value="CHANGE_TO_PASSWORD_PROVIDED_BY_VIETQR" />
   <env name="TELEGRAM_BOT_TOKEN" value="" />
   <env name="ZALO_OA_ACCESS_TOKEN" value="" />
 
