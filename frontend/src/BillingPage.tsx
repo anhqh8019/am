@@ -52,7 +52,7 @@ type Bill = {
   status: string;
   items: Item[];
 };
-type BankQr = {id:number;referenceCode:string;amount:number;bankCode:string;bankAccount:string;accountName:string;qrImageUrl:string;status:string;expiresAt:string};
+type BankQr = {id:number;referenceCode:string;amount:number;bankCode:string;bankAccount:string;accountName:string;qrImageUrl:string;qrLink?:string;status:string;expiresAt:string};
 type QrStatus = {referenceCode:string;status:string};
 const money = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + " đ";
 const currentMonth = new Date().toISOString().slice(0, 7),
@@ -535,7 +535,7 @@ export function BillingPage({ initialSourceType = "" }: { initialSourceType?: ""
           </div></> : <div className="bank-qr-detail">
             <img src={bankQr.qrImageUrl} alt={`QR thanh toán ${bankQr.referenceCode}`} />
             <div><span>Số tiền</span><b>{money(bankQr.amount)}</b></div><div><span>Nội dung chuyển khoản</span><b>{bankQr.referenceCode}</b></div><div><span>Tài khoản nhận</span><b>{bankQr.bankAccount} · {bankQr.accountName}</b></div>
-            <p>Trạng thái sẽ tự chuyển sang đã thanh toán sau khi ngân hàng gửi giao dịch và hệ thống đối soát thành công.</p>
+            <p>QR được tạo trực tiếp qua API VietQR. Trạng thái chỉ chuyển sang đã thanh toán sau khi VietQR callback giao dịch và hệ thống đối soát thành công.</p>
           </div>}
           <div className="modal-actions"><button type="button" onClick={() => bankQr?setBankQr(null):setQrBill(null)}>{bankQr?"Chọn dịch vụ khác":"Đóng"}</button>{bankQr&&<button type="button" className="primary" onClick={downloadQr}><Download />Tải QR về</button>}</div>
         </div></div>
